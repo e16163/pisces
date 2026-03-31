@@ -1,44 +1,81 @@
-// Initialize MediaPipe Face Mesh
-const faceMesh = new FaceMesh({locateFile: (file) => {
-  return `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`;
-}});
+console.log("--- PISCES SYSTEM STARTING ---");
+
+// ── FaceMesh Init ──────────────────────────────
+const faceMesh = new FaceMesh({
+  locateFile: (file) =>
+    `https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh/${file}`,
+});
 
 faceMesh.setOptions({
   maxNumFaces: 1,
-  refineLandmarks: true, // Crucial for the 3D volume
-  minDetectionConfidence: 0.5
+  refineLandmarks: true,
+  minDetectionConfidence: 0.7,
 });
 
-// Link this to your existing upload input ID
-const imageInput = document.getElementById('imageUpload'); 
+// ── Capture the current nudged/zoomed face frame ──
+// Uses the global imgTranslateX / imgTranslateY / imgScale set by the HTML.
+function captureFaceFrame() {
+  const canvas = document.getElementById("capture-canvas");
+  const ctx = canvas.getContext("2d");
+  const frame = document.getElementById("faceFrameContainer");
+  const img = document.getElementById("previewImg");
 
-imageInput.addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  const img = document.createElement('img');
-  img.src = URL.createObjectURL(file);
+  canvas.width = frame.offsetWidth;
+  canvas.height = frame.offsetHeight;
 
-  img.onload = async () => {
-    await faceMesh.send({image: img});
-  };
-});
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.save();
+  // Reconstruct the same transform the CSS applies so MediaPipe
+  // sees exactly what the user aligned inside the oval.
+  ctx.translate(
+    canvas.width / 2 + imgTranslateX,
+    canvas.height / 2 + imgTranslateY
+  );
+  ctx.scale(imgScale, imgScale);
+  ctx.drawImage(img, -img.naturalWidth / 2, -img.naturalHeight / 2);
+  ctx.restore();
 
-// When MediaPipe gets the points, send to Python
-faceMesh.onResults(async (results) => {
-  if (results.multiFaceLandmarks && results.multiFaceLandmarks[0]) {
-    const landmarks = results.multiFaceLandmarks[0];
-    
-    const response = await fetch('http://127.0.0.1:8000/predict', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        landmarks: landmarks,
-        height: 180 // Hardcoded for testing, link to UI later
-      })
-    });
+  return canvas;
+}
 
-    const r = await response.json();
-    
-    // Call the exact function from your HTML template
-    showResults(r); 
+// ── Override analyzeUploadedImage (defined in the HTML) ───────────────
+// Run MediaPipe first; the onResults callback fires runAnalysis() after.
+window.analyzeUploadedImage = function () {
+  if (!uploadedImageData) return;
+  faceMesh.send({ image: captureFaceFrame() });
+};
+
+// ── Override capturePhoto (camera path) ──────────────────────────────
+// Re-implement capture so it routes through MediaPipe before runAnalysis().
+window.capturePhoto = function () {
+  if (!stream) return;
+
+  const canvas = document.getElementById("capture-canvas");
+  const ctx = canvas.getContext("2d");
+  const video = document.getElementById("camera-video");
+
+  canvas.width = video.videoWidth || 640;
+  canvas.height = video.videoHeight || 480;
+  ctx.save();
+  ctx.scale(-1, 1); // un-mirror the front camera
+  ctx.drawImage(video, -canvas.width, 0);
+  ctx.restore();
+
+  stopCamera();
+  faceMesh.send({ image: canvas });
+};
+
+// ── FaceMesh result handler ───────────────────────────────────────────
+faceMesh.onResults((results) => {
+  if (results.multiFaceLandmarks?.[0]) {
+    console.log("✅ Face landmarks detected.");
+    window.currentLandmarks = results.multiFaceLandmarks[0];
+    runAnalysis(); // defined in the HTML; reads window.currentLandmarks
+  } else {
+    console.warn("No face detected.");
+    alert(
+      "No face detected in the frame.\n" +
+      "Try zooming in or repositioning the image so your face fills the oval."
+    );
   }
 });
