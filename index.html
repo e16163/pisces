@@ -1,0 +1,1904 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pisces — Know Your Weight. No Scale Required.</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --cream: #f5f0e8;
+    --warm-white: #faf8f4;
+    --charcoal: #12111a;
+    --mid: #4a4758;
+    --light: #9a95ab;
+    --sage: #7a8c78;
+    --rust: #8b5cf6;
+    --gold: #b8965a;
+    --ocean: #5b4adf;
+    --ocean-light: #7c6ef5;
+    --ocean-pale: #eeeaff;
+    --border: #e0daf0;
+    --violet: #4338ca;
+    --violet-deep: #2d1fa3;
+    --indigo-glow: rgba(91,74,223,0.18);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; cursor: none !important; }
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--warm-white);
+    color: var(--charcoal);
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 300;
+    overflow-x: hidden;
+  }
+
+  /* ── CUSTOM CURSOR ── */
+  .cursor-dot {
+    width: 8px; height: 8px;
+    background: var(--ocean);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 99999;
+    transform: translate(-50%,-50%);
+    transition: background 0.2s, width 0.2s, height 0.2s;
+    will-change: left, top;
+  }
+  .cursor-ring {
+    width: 36px; height: 36px;
+    border: 1.5px solid rgba(91,74,223,0.45);
+    border-radius: 50%;
+    position: fixed;
+    pointer-events: none;
+    z-index: 99998;
+    transform: translate(-50%,-50%);
+    transition: width 0.3s, height 0.3s, border-color 0.3s;
+    will-change: left, top;
+  }
+  .cursor-active .cursor-ring {
+    width: 56px; height: 56px;
+    border-color: rgba(139,92,246,0.6);
+  }
+
+  /* ── PARTICLES CANVAS ── */
+  #particles-canvas {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.3;
+  }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 24px 60px;
+    background: rgba(250, 248, 244, 0.88);
+    backdrop-filter: blur(16px);
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.3s, padding 0.4s;
+  }
+  nav.scrolled { border-bottom-color: var(--border); padding: 16px 60px; }
+
+  .nav-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 21px;
+    font-weight: 400;
+    letter-spacing: 4px;
+    text-transform: uppercase;
+    color: var(--charcoal);
+    text-decoration: none;
+  }
+  .logo-mark { width: 36px; height: 36px; flex-shrink: 0; }
+
+  .nav-links { display: flex; gap: 40px; list-style: none; }
+  .nav-links a {
+    font-size: 13px; letter-spacing: 1px;
+    color: var(--mid); text-decoration: none;
+    transition: color 0.2s;
+  }
+  .nav-links a:hover { color: var(--charcoal); }
+
+  .nav-cta {
+    background: var(--ocean) !important;
+    color: #fff !important;
+    padding: 10px 24px;
+    letter-spacing: 1.5px;
+    font-size: 12px !important;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: background 0.2s !important;
+    border-radius: 2px;
+  }
+  .nav-cta:hover { background: var(--rust) !important; }
+
+  /* ── HERO ── */
+  .hero {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hero-left {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 120px 60px 80px 60px;
+    position: relative;
+    z-index: 2;
+  }
+
+  .hero-eyebrow {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+    color: var(--ocean); margin-bottom: 28px;
+    opacity: 0; animation: fadeUp 0.9s ease 0.2s forwards;
+  }
+  .hero-eyebrow::before { content: ''; display: block; width: 32px; height: 1px; background: var(--ocean); }
+
+  .hero-headline {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(52px, 6vw, 88px);
+    font-weight: 300; line-height: 1.05; letter-spacing: -1px;
+    color: var(--charcoal); margin-bottom: 32px;
+    opacity: 0; animation: fadeUp 0.9s ease 0.35s forwards;
+  }
+  .hero-headline em { font-style: italic; color: var(--ocean); }
+
+  .hero-sub {
+    font-size: 16px; line-height: 1.7; color: var(--mid);
+    max-width: 420px; margin-bottom: 48px;
+    opacity: 0; animation: fadeUp 0.9s ease 0.5s forwards;
+  }
+
+  .hero-actions {
+    display: flex; align-items: center; gap: 24px;
+    opacity: 0; animation: fadeUp 0.9s ease 0.65s forwards;
+  }
+
+  .btn-primary {
+    background: var(--ocean); color: #fff;
+    padding: 16px 36px;
+    font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 400;
+    letter-spacing: 2px; text-transform: uppercase; text-decoration: none;
+    display: inline-block; transition: background 0.25s, transform 0.2s;
+    border: none; position: relative; overflow: hidden; border-radius: 2px;
+  }
+  .btn-primary::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+    transform: translateX(-100%); transition: transform 0.5s ease;
+  }
+  .btn-primary:hover { background: var(--rust); transform: translateY(-2px); }
+  .btn-primary:hover::after { transform: translateX(100%); }
+
+  .btn-ghost {
+    font-size: 13px; color: var(--mid); text-decoration: none;
+    letter-spacing: 1px; display: flex; align-items: center; gap: 8px;
+    transition: color 0.2s;
+  }
+  .btn-ghost:hover { color: var(--charcoal); }
+  .btn-ghost .arrow { display: inline-block; transition: transform 0.2s; }
+  .btn-ghost:hover .arrow { transform: translateX(4px); }
+
+  /* Hero Right */
+  .hero-right {
+    position: relative;
+    background: linear-gradient(145deg, #ede9ff 0%, #ddd6fe 50%, #c7d2fe 100%);
+    overflow: hidden;
+  }
+
+  .wave-bg { position: absolute; bottom: 0; left: 0; right: 0; height: 100%; overflow: hidden; }
+  .wave {
+    position: absolute; bottom: 0; left: -50%; width: 200%;
+    border-radius: 50% 50% 0 0; opacity: 0.14;
+  }
+  .wave1 { height: 65%; background: var(--ocean); animation: waveDrift 8s ease-in-out infinite; }
+  .wave2 { height: 50%; background: var(--ocean-light); animation: waveDrift 10s ease-in-out infinite reverse; animation-delay: -3s; }
+  .wave3 { height: 38%; background: var(--violet); animation: waveDrift 12s ease-in-out infinite; animation-delay: -6s; }
+
+  @keyframes waveDrift {
+    0%, 100% { transform: translateX(0) scaleY(1); }
+    33% { transform: translateX(3%) scaleY(1.04); }
+    66% { transform: translateX(-3%) scaleY(0.97); }
+  }
+
+  .hero-visual {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center; z-index: 2;
+  }
+
+  .phone-mockup {
+    width: 260px; background: var(--charcoal); border-radius: 40px; padding: 12px;
+    box-shadow: 0 40px 80px rgba(91,74,223,0.3), 0 8px 24px rgba(26,26,24,0.12), inset 0 1px 0 rgba(255,255,255,0.08);
+    position: relative; z-index: 2; animation: float 6s ease-in-out infinite;
+  }
+
+  @keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-14px); } }
+
+  .phone-inner { background: #0e0b1e; border-radius: 30px; overflow: hidden; aspect-ratio: 9/19; position: relative; }
+
+  .phone-screen {
+    background: linear-gradient(160deg, #0d0a20 0%, #160e35 100%);
+    height: 100%; display: flex; flex-direction: column; padding: 28px 20px 24px;
+  }
+
+  .phone-notch {
+    width: 80px; height: 28px; background: #000; border-radius: 0 0 18px 18px;
+    margin: -28px auto 20px; position: relative; z-index: 1;
+  }
+
+  .phone-label { font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: rgba(255,255,255,0.3); text-align: center; margin-bottom: 12px; }
+
+  .phone-face-area {
+    flex: 1; border-radius: 16px;
+    background: rgba(91,74,223,0.1); border: 1px solid rgba(91,74,223,0.28);
+    display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 8px;
+    position: relative; overflow: hidden;
+  }
+
+  .face-icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: rgba(91,74,223,0.2); border: 1.5px solid rgba(124,110,245,0.55);
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  .ripple-ring {
+    position: absolute; border-radius: 50%;
+    border: 1px solid rgba(124,110,245,0.5); top: 50%; left: 50%;
+    transform: translate(-50%, -50%) scale(0); animation: rippleOut 3s ease-out infinite;
+  }
+  .ripple-ring:nth-child(2) { animation-delay: 1s; }
+  .ripple-ring:nth-child(3) { animation-delay: 2s; }
+
+  @keyframes rippleOut {
+    0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0.8; width: 60px; height: 60px; }
+    100% { transform: translate(-50%, -50%) scale(4); opacity: 0; width: 60px; height: 60px; }
+  }
+
+  .scan-line {
+    position: absolute; left: 12px; right: 12px; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(124,110,245,0.9), transparent);
+    animation: scanPhone 2.5s ease-in-out infinite;
+  }
+
+  @keyframes scanPhone {
+    0% { top: 10%; opacity: 0; }
+    15% { opacity: 1; }
+    85% { opacity: 1; }
+    100% { top: 90%; opacity: 0; }
+  }
+
+  .corner-marks { position: absolute; inset: 16px; pointer-events: none; }
+  .corner-marks::before, .corner-marks::after, .cm-bl::before, .cm-br::after {
+    content: ''; position: absolute; width: 14px; height: 14px; border-color: rgba(124,110,245,0.65); border-style: solid;
+  }
+  .corner-marks::before { top: 0; left: 0; border-width: 1.5px 0 0 1.5px; }
+  .corner-marks::after  { top: 0; right: 0; border-width: 1.5px 1.5px 0 0; }
+  .cm-bl::before { bottom: 0; left: 0; border-width: 0 0 1.5px 1.5px; }
+  .cm-br::after  { bottom: 0; right: 0; border-width: 0 1.5px 1.5px 0; }
+
+  .phone-result {
+    background: rgba(91,74,223,0.18); border-radius: 12px; padding: 14px; margin-top: 12px;
+    border: 1px solid rgba(124,110,245,0.22);
+  }
+  .pr-label { font-size: 8px; letter-spacing: 2px; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 2px; }
+  .pr-value { font-size: 26px; font-weight: 600; color: #fff; letter-spacing: -0.5px; }
+  .pr-unit { font-size: 13px; font-weight: 300; color: rgba(255,255,255,0.5); }
+  .pr-bar { height: 3px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+  .pr-bar-fill {
+    height: 100%; width: 78%;
+    background: linear-gradient(90deg, var(--ocean), var(--ocean-light)); border-radius: 2px;
+    animation: barPulse 3s ease-in-out infinite;
+  }
+  @keyframes barPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+
+  .decorative-circle { position: absolute; border-radius: 50%; background: rgba(91,74,223,0.07); }
+  .dc1 { width: 380px; height: 380px; top: -80px; right: -100px; }
+  .dc2 { width: 200px; height: 200px; bottom: 40px; left: -40px; }
+
+  .constellation { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+  .star {
+    position: absolute; border-radius: 50%; background: var(--ocean);
+    animation: twinkle var(--dur, 3s) ease-in-out infinite; animation-delay: var(--delay, 0s);
+  }
+  @keyframes twinkle {
+    0%, 100% { opacity: 0.15; transform: scale(1); }
+    50% { opacity: 0.9; transform: scale(1.5); }
+  }
+
+  /* ── STATS STRIP ── */
+  .stats-strip {
+    background: var(--charcoal); padding: 48px 60px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 40px;
+    position: relative; overflow: hidden; z-index: 1;
+  }
+  .stats-strip::before {
+    content: ''; position: absolute; inset: 0;
+    background: repeating-linear-gradient(90deg, transparent, transparent 60px, rgba(255,255,255,0.012) 60px, rgba(255,255,255,0.012) 61px);
+  }
+
+  .stat { text-align: center; border-right: 1px solid rgba(255,255,255,0.07); position: relative; }
+  .stat:last-child { border-right: none; }
+  .stat-num { font-family: 'Cormorant Garamond', serif; font-size: 56px; font-weight: 300; color: var(--cream); line-height: 1; margin-bottom: 8px; }
+  .stat-label { font-size: 11px; letter-spacing: 2px; color: rgba(255,255,255,0.32); text-transform: uppercase; }
+
+  /* ── SECTIONS ── */
+  .section { padding: 130px 60px; position: relative; z-index: 1; }
+
+  .section-label {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 11px; letter-spacing: 4px; text-transform: uppercase;
+    color: var(--ocean); margin-bottom: 20px;
+  }
+  .section-label::before { content: ''; width: 32px; height: 1px; background: var(--ocean); }
+
+  .section-headline {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: clamp(38px, 4vw, 62px); font-weight: 300; line-height: 1.1;
+    max-width: 600px; margin-bottom: 64px;
+  }
+  .section-headline em { font-style: italic; color: var(--ocean); }
+
+  /* ── STEPS ── */
+  .steps-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; background: var(--border); }
+
+  .step { background: var(--warm-white); padding: 52px 40px; position: relative; overflow: hidden; transition: background 0.4s; }
+  .step:hover { background: var(--cream); }
+
+  .step-num { font-family: 'Cormorant Garamond', serif; font-size: 88px; font-weight: 300; color: var(--border); line-height: 1; margin-bottom: 20px; transition: color 0.4s; }
+  .step:hover .step-num { color: rgba(91,74,223,0.14); }
+
+  .step-icon {
+    width: 48px; height: 48px; background: var(--ocean); border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; margin-bottom: 20px;
+    transition: transform 0.35s, background 0.35s;
+  }
+  .step:hover .step-icon { transform: scale(1.12) rotate(6deg); background: var(--rust); }
+  .step-icon svg { color: #fff; }
+
+  .step h3 { font-family: 'Cormorant Garamond', serif; font-size: 26px; font-weight: 400; margin-bottom: 12px; }
+  .step p { font-size: 14px; line-height: 1.75; color: var(--mid); }
+
+  /* ── FEATURES ── */
+  .features-section { padding: 130px 60px; background: var(--cream); position: relative; z-index: 1; overflow: hidden; }
+  .features-section::before {
+    content: '♓'; position: absolute; font-size: 600px; color: rgba(91,74,223,0.028);
+    right: -100px; top: 50%; transform: translateY(-50%); font-family: serif; pointer-events: none; line-height: 1;
+  }
+
+  .features-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center; margin-top: 60px; }
+  .feature-list { display: flex; flex-direction: column; gap: 32px; }
+
+  .feature-item {
+    display: flex; gap: 20px; padding-bottom: 32px;
+    border-bottom: 1px solid var(--border); transition: transform 0.35s;
+  }
+  .feature-item:last-child { border-bottom: none; padding-bottom: 0; }
+  .feature-item:hover { transform: translateX(8px); }
+
+  .feature-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--ocean);
+    margin-top: 6px; flex-shrink: 0; transition: transform 0.3s, background 0.3s;
+  }
+  .feature-item:hover .feature-dot { transform: scale(1.7); background: var(--rust); }
+
+  .feature-item h4 { font-family: 'Cormorant Garamond', serif; font-size: 23px; font-weight: 400; margin-bottom: 8px; }
+  .feature-item p { font-size: 14px; line-height: 1.75; color: var(--mid); }
+
+  .features-visual { position: relative; }
+
+  .metrics-card {
+    background: var(--charcoal); border-radius: 24px; padding: 36px; color: var(--cream);
+    box-shadow: 0 32px 72px rgba(91,74,223,0.25); position: relative; overflow: hidden;
+  }
+  .metrics-card::before {
+    content: ''; position: absolute; top: -60px; right: -60px; width: 220px; height: 220px;
+    border-radius: 50%; background: rgba(91,74,223,0.14); pointer-events: none;
+  }
+
+  .mc-title { font-size: 11px; letter-spacing: 3px; color: rgba(255,255,255,0.3); text-transform: uppercase; margin-bottom: 24px; }
+  .mc-main { font-family: 'Cormorant Garamond', serif; font-size: 64px; font-weight: 300; line-height: 1; margin-bottom: 4px; }
+  .mc-unit { font-size: 20px; color: rgba(255,255,255,0.4); }
+  .mc-sub { font-size: 13px; color: rgba(255,255,255,0.32); margin-bottom: 28px; }
+
+  .mc-metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .mc-metric { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 16px; transition: background 0.25s; }
+  .mc-metric:hover { background: rgba(91,74,223,0.22); }
+
+  .mc-metric-label { font-size: 9px; letter-spacing: 2px; color: rgba(255,255,255,0.28); text-transform: uppercase; margin-bottom: 6px; }
+  .mc-metric-val { font-size: 18px; font-weight: 500; color: var(--cream); }
+
+  .accuracy-pill {
+    position: absolute; top: -16px; right: -16px;
+    background: var(--ocean); color: #fff; padding: 10px 18px; border-radius: 100px;
+    font-size: 12px; font-weight: 500; letter-spacing: 1px;
+    box-shadow: 0 8px 28px rgba(91,74,223,0.45); animation: pillBob 4s ease-in-out infinite;
+  }
+  @keyframes pillBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-7px); } }
+
+  /* ── CTA ── */
+  .cta-section {
+    background: var(--charcoal); padding: 130px 60px; text-align: center;
+    position: relative; overflow: hidden; z-index: 1;
+  }
+  .cta-section::before {
+    content: 'PISCES'; position: absolute;
+    font-family: 'Cormorant Garamond', serif; font-size: 280px; font-weight: 300;
+    color: rgba(255,255,255,0.018); top: 50%; left: 50%;
+    transform: translate(-50%, -50%); letter-spacing: 40px; white-space: nowrap; pointer-events: none;
+  }
+
+  .cta-waves { position: absolute; bottom: 0; left: 0; right: 0; height: 120px; overflow: hidden; pointer-events: none; }
+  .cta-wave-line {
+    position: absolute; left: -100%; width: 300%; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(124,110,245,0.3), transparent);
+    animation: waveScroll var(--dur, 6s) linear infinite; animation-delay: var(--delay, 0s);
+  }
+  @keyframes waveScroll { from { transform: translateX(0); } to { transform: translateX(33.33%); } }
+
+  .cta-headline { font-family: 'Cormorant Garamond', serif; font-size: clamp(40px, 5vw, 72px); font-weight: 300; color: var(--cream); line-height: 1.1; margin-bottom: 24px; }
+  .cta-headline em { font-style: italic; color: var(--ocean-light); }
+
+  .cta-sub { font-size: 16px; color: rgba(255,255,255,0.38); max-width: 480px; margin: 0 auto 48px; line-height: 1.7; }
+
+  .cta-actions { display: flex; align-items: center; justify-content: center; gap: 20px; flex-wrap: wrap; position: relative; z-index: 2; }
+
+  .btn-light {
+    background: var(--cream); color: var(--charcoal);
+    padding: 16px 40px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 400;
+    letter-spacing: 2px; text-transform: uppercase; text-decoration: none;
+    display: inline-block; transition: background 0.25s, transform 0.2s;
+    border: none; position: relative; overflow: hidden; border-radius: 2px;
+  }
+  .btn-light::after {
+    content: ''; position: absolute; inset: 0;
+    background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.3) 50%, transparent 70%);
+    transform: translateX(-100%); transition: transform 0.5s ease;
+  }
+  .btn-light:hover { background: var(--ocean-light); color: #fff; transform: translateY(-2px); }
+  .btn-light:hover::after { transform: translateX(100%); }
+
+  .btn-ghost-light { font-size: 13px; color: rgba(255,255,255,0.38); text-decoration: none; letter-spacing: 1px; transition: color 0.2s; }
+  .btn-ghost-light:hover { color: var(--cream); }
+
+  .web-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 28px; padding: 10px 20px;
+    border: 1px solid rgba(255,255,255,0.1); border-radius: 100px;
+    font-size: 12px; color: rgba(255,255,255,0.38); letter-spacing: 1px;
+  }
+  .web-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ocean-light); animation: pulse 2s ease-in-out infinite; }
+  @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.7); } }
+
+  /* ── FOOTER ── */
+  footer {
+    padding: 40px 60px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative; z-index: 1;
+  }
+  .footer-logo { display: flex; align-items: center; gap: 8px; font-family: 'Cormorant Garamond', serif; font-size: 18px; letter-spacing: 4px; text-transform: uppercase; }
+  .footer-links { display: flex; gap: 32px; list-style: none; }
+  .footer-links a { font-size: 12px; color: var(--light); text-decoration: none; letter-spacing: 1px; transition: color 0.2s; }
+  .footer-links a:hover { color: var(--charcoal); }
+  .footer-copy { font-size: 12px; color: var(--light); }
+
+  /* ── ANIMATIONS ── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+  .reveal { opacity: 0; }
+  .reveal[data-anim="fade-up"] { transform: translateY(36px); transition: opacity 1s cubic-bezier(.22,1,.36,1), transform 1s cubic-bezier(.22,1,.36,1); }
+  .reveal[data-anim="fade-left"] { transform: translateX(-40px); transition: opacity 1s cubic-bezier(.22,1,.36,1), transform 1s cubic-bezier(.22,1,.36,1); }
+  .reveal[data-anim="fade-right"] { transform: translateX(40px); transition: opacity 1s cubic-bezier(.22,1,.36,1), transform 1s cubic-bezier(.22,1,.36,1); }
+  .reveal[data-anim="scale"] { transform: scale(0.88); transition: opacity 1.1s cubic-bezier(.22,1,.36,1), transform 1.1s cubic-bezier(.22,1,.36,1); }
+  .reveal[data-anim="clip"] { clip-path: inset(0 100% 0 0); transition: opacity 0.9s ease, clip-path 0.9s cubic-bezier(.22,1,.36,1); }
+  .reveal[data-anim="rotate"] { transform: translateY(30px) rotate(-3deg); transition: opacity 0.9s ease, transform 0.9s cubic-bezier(.22,1,.36,1); }
+  .reveal.visible { opacity: 1; transform: none; clip-path: inset(0 0% 0 0); }
+
+  /* ── MARQUEE ── */
+  .marquee-section {
+    overflow: hidden; padding: 28px 0;
+    border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+    background: var(--cream); position: relative; z-index: 1;
+  }
+  .marquee-track { display: flex; gap: 60px; width: max-content; animation: marquee 22s linear infinite; }
+  .marquee-item {
+    display: flex; align-items: center; gap: 16px; white-space: nowrap;
+    font-family: 'Cormorant Garamond', serif; font-size: 18px; font-weight: 300;
+    color: var(--mid); letter-spacing: 2px;
+  }
+  .marquee-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--ocean); flex-shrink: 0; }
+  @keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  /* ── ORBS ── */
+  .orb { position: fixed; border-radius: 50%; pointer-events: none; filter: blur(90px); z-index: 0; will-change: transform; }
+  .orb1 { width: 600px; height: 600px; background: rgba(91,74,223,0.07); top: -200px; right: -150px; }
+  .orb2 { width: 400px; height: 400px; background: rgba(139,92,246,0.06); bottom: 20%; left: -100px; }
+
+  #scroll-progress { position: fixed; top: 0; left: 0; height: 2px; background: linear-gradient(90deg, var(--ocean), var(--rust)); z-index: 200; width: 0%; transition: width 0.1s linear; }
+
+  /* ══════════════════════════════════════════
+     SCAN MODAL
+  ══════════════════════════════════════════ */
+  .scan-modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(12, 10, 26, 0.88);
+    backdrop-filter: blur(18px);
+    z-index: 1000;
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+  .scan-modal-overlay.open { opacity: 1; pointer-events: all; }
+
+  .scan-modal {
+    background: #0e0b1e;
+    border: 1px solid rgba(91,74,223,0.3);
+    border-radius: 28px;
+    padding: 0;
+    width: min(680px, 94vw);
+    max-height: 92vh;
+    overflow: hidden;
+    box-shadow: 0 40px 120px rgba(91,74,223,0.35);
+    transform: translateY(24px) scale(0.97);
+    transition: transform 0.4s cubic-bezier(.22,1,.36,1);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+  }
+  .scan-modal-overlay.open .scan-modal { transform: translateY(0) scale(1); }
+
+  .modal-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 28px 32px 20px;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+  }
+  .modal-title {
+    font-family: 'Cormorant Garamond', serif;
+    font-size: 26px; font-weight: 300; color: var(--cream);
+    letter-spacing: 0.5px;
+  }
+  .modal-close {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: rgba(255,255,255,0.06); border: none;
+    display: flex; align-items: center; justify-content: center;
+    color: rgba(255,255,255,0.4); font-size: 18px; font-weight: 300;
+    transition: background 0.2s, color 0.2s;
+  }
+  .modal-close:hover { background: rgba(91,74,223,0.35); color: #fff; }
+
+  .modal-body { padding: 28px 32px 32px; overflow-y: auto; flex: 1; }
+
+  /* Tabs */
+  .modal-tabs {
+    display: flex; gap: 4px;
+    background: rgba(255,255,255,0.04); border-radius: 10px; padding: 4px;
+    margin-bottom: 28px;
+  }
+  .modal-tab {
+    flex: 1; padding: 10px; background: none; border: none;
+    color: rgba(255,255,255,0.36); font-family: 'DM Sans', sans-serif;
+    font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+    border-radius: 8px; transition: all 0.25s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .modal-tab.active { background: var(--ocean); color: #fff; }
+  .modal-tab:hover:not(.active) { color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.06); }
+
+  /* Tab icons — SVG only, no emoji */
+  .tab-icon { width: 14px; height: 14px; flex-shrink: 0; }
+
+  /* Panels */
+  .modal-panel { display: none; }
+  .modal-panel.active { display: block; }
+
+  /* Camera panel */
+  .camera-container {
+    position: relative; border-radius: 16px; overflow: hidden;
+    background: #000; aspect-ratio: 4/3;
+    border: 1px solid rgba(91,74,223,0.28);
+    margin-bottom: 20px;
+  }
+
+  #camera-video {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    transform: scaleX(-1);
+  }
+
+  .camera-overlay {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+
+  .face-guide-cam {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -55%);
+    width: 42%; aspect-ratio: 3/4;
+    border: 2px solid rgba(124,110,245,0.55);
+    border-radius: 50% 50% 45% 45%;
+  }
+
+  .cam-corner { position: absolute; width: 20px; height: 20px; border-color: rgba(124,110,245,0.8); border-style: solid; }
+  .cam-corner.tl { top: 12px; left: 12px; border-width: 2px 0 0 2px; }
+  .cam-corner.tr { top: 12px; right: 12px; border-width: 2px 2px 0 0; }
+  .cam-corner.bl { bottom: 12px; left: 12px; border-width: 0 0 2px 2px; }
+  .cam-corner.br { bottom: 12px; right: 12px; border-width: 0 2px 2px 0; }
+
+  .scan-beam {
+    position: absolute; left: 8px; right: 8px; height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(124,110,245,0.95), transparent);
+    border-radius: 2px;
+    animation: beamScan 2.2s ease-in-out infinite;
+    display: none;
+  }
+  .camera-active .scan-beam { display: block; }
+  @keyframes beamScan { 0%, 100% { top: 10%; opacity: 0; } 8%, 92% { opacity: 1; } 50% { top: 88%; } }
+
+  .cam-status-badge {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(12, 10, 26, 0.75); backdrop-filter: blur(8px);
+    border: 1px solid rgba(91,74,223,0.3); border-radius: 20px;
+    padding: 6px 16px; font-size: 11px; letter-spacing: 2px;
+    color: rgba(255,255,255,0.6); text-transform: uppercase; white-space: nowrap;
+  }
+
+  .camera-placeholder {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+    color: rgba(255,255,255,0.3); font-size: 13px; letter-spacing: 1px; text-transform: uppercase;
+  }
+  .camera-placeholder svg { opacity: 0.25; }
+
+  .cam-btn-row { display: flex; gap: 12px; }
+
+  .btn-cam-start {
+    flex: 1; padding: 14px; border-radius: 12px;
+    background: var(--ocean); border: none;
+    color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    transition: background 0.2s, transform 0.15s;
+  }
+  .btn-cam-start:hover { background: var(--rust); transform: translateY(-1px); }
+
+  .btn-cam-capture {
+    flex: 1; padding: 14px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--ocean), var(--rust));
+    border: none; color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    transition: opacity 0.2s, transform 0.15s;
+    display: none;
+  }
+  .btn-cam-capture:hover { opacity: 0.88; transform: translateY(-1px); }
+
+  .btn-cam-stop {
+    width: 50px; padding: 14px; border-radius: 12px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.5); font-size: 18px;
+    transition: background 0.2s;
+    display: none;
+  }
+  .btn-cam-stop:hover { background: rgba(255,60,60,0.2); color: #ff6b6b; }
+
+  /* ─── UPLOAD PANEL ─── */
+  .upload-zone {
+    border: 2px dashed rgba(91,74,223,0.35); border-radius: 16px;
+    padding: 48px 32px; text-align: center;
+    transition: border-color 0.25s, background 0.25s;
+    margin-bottom: 20px;
+    position: relative;
+  }
+  .upload-zone.drag-over { border-color: var(--ocean); background: rgba(91,74,223,0.08); }
+  .upload-zone-icon { margin-bottom: 16px; color: rgba(124,110,245,0.6); }
+  .upload-zone-title { font-family: 'Cormorant Garamond', serif; font-size: 22px; font-weight: 300; color: var(--cream); margin-bottom: 8px; }
+  .upload-zone-sub { font-size: 13px; color: rgba(255,255,255,0.3); line-height: 1.6; margin-bottom: 20px; }
+
+  .btn-upload-browse {
+    display: inline-block; padding: 11px 28px; border-radius: 8px;
+    background: rgba(91,74,223,0.25); border: 1px solid rgba(91,74,223,0.5);
+    color: rgba(255,255,255,0.75); font-family: 'DM Sans', sans-serif;
+    font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-upload-browse:hover { background: var(--ocean); color: #fff; }
+
+  #file-input { display: none; }
+
+  /* ── FACE FRAME PREVIEW ── */
+  .face-frame-container {
+    position: relative; border-radius: 16px; overflow: hidden;
+    aspect-ratio: 4/3; margin-bottom: 16px; display: none;
+    border: 1px solid rgba(91,74,223,0.28); background: #000;
+  }
+  #previewImg {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+  }
+  .face-frame-overlay {
+    position: absolute; inset: 0; pointer-events: none;
+  }
+  /* SVG face oval guide rendered as overlay */
+  .face-oval-svg {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -55%);
+    width: 40%; aspect-ratio: 3/4;
+  }
+  .face-frame-corners .fc { position: absolute; width: 18px; height: 18px; border-style: solid; border-color: rgba(124,110,245,0.85); }
+  .face-frame-corners .fc.tl { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+  .face-frame-corners .fc.tr { top: 10px; right: 10px; border-width: 2px 2px 0 0; }
+  .face-frame-corners .fc.bl { bottom: 10px; left: 10px; border-width: 0 0 2px 2px; }
+  .face-frame-corners .fc.br { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+  .face-frame-hint {
+    position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(12,10,26,0.75); backdrop-filter: blur(8px);
+    border: 1px solid rgba(91,74,223,0.3); border-radius: 20px;
+    padding: 6px 16px; font-size: 11px; letter-spacing: 2px;
+    color: rgba(255,255,255,0.55); text-transform: uppercase; white-space: nowrap;
+  }
+  .face-frame-scan {
+    position: absolute; left: 8px; right: 8px; height: 1.5px;
+    background: linear-gradient(90deg, transparent, rgba(124,110,245,0.85), transparent);
+    border-radius: 2px;
+    top: 10%;
+    animation: previewScan 2.4s ease-in-out infinite;
+    opacity: 0;
+  }
+  .face-frame-container.has-image .face-frame-scan { opacity: 1; }
+  @keyframes previewScan {
+    0%   { top: 10%; opacity: 0; }
+    10%  { opacity: 1; }
+    90%  { opacity: 1; }
+    100% { top: 88%; opacity: 0; }
+  }
+  .upload-preview-remove {
+    position: absolute; top: 10px; right: 10px;
+    width: 28px; height: 28px; border-radius: 50%;
+    background: rgba(12,10,26,0.8); border: 1px solid rgba(255,255,255,0.15);
+    color: rgba(255,255,255,0.7); font-size: 14px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s; pointer-events: all; z-index: 10;
+  }
+  .upload-preview-remove:hover { background: rgba(255,60,60,0.6); color: #fff; }
+
+  .frame-instructions {
+    background: rgba(91,74,223,0.08); border: 1px solid rgba(91,74,223,0.2);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 16px;
+    font-size: 12px; color: rgba(255,255,255,0.45); letter-spacing: 0.5px; line-height: 1.5;
+    display: none; align-items: center; gap: 10px;
+  }
+  .frame-instructions svg { flex-shrink: 0; opacity: 0.6; }
+
+  .btn-analyze {
+    width: 100%; padding: 16px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--ocean), var(--rust));
+    border: none; color: #fff; font-family: 'DM Sans', sans-serif;
+    font-size: 13px; letter-spacing: 2.5px; text-transform: uppercase;
+    font-weight: 400; transition: opacity 0.2s, transform 0.15s;
+    margin-bottom: 16px;
+  }
+  .btn-analyze:hover { opacity: 0.88; transform: translateY(-1px); }
+  .btn-analyze:disabled { opacity: 0.3; transform: none; }
+
+  /* Progress / loading */
+  .analysis-progress { display: none; margin-bottom: 20px; }
+  .progress-steps { display: flex; flex-direction: column; gap: 10px; }
+  .progress-step {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 16px; border-radius: 10px;
+    background: rgba(255,255,255,0.04);
+    font-size: 12px; letter-spacing: 1px; color: rgba(255,255,255,0.3);
+    text-transform: uppercase;
+  }
+  .progress-step .step-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: rgba(255,255,255,0.12); flex-shrink: 0;
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+  .progress-step.active .step-dot { background: var(--ocean); box-shadow: 0 0 10px rgba(91,74,223,0.8); }
+  .progress-step.done .step-dot { background: #4ade80; box-shadow: 0 0 8px rgba(74,222,128,0.6); }
+  .progress-step.active { color: rgba(255,255,255,0.75); background: rgba(91,74,223,0.12); }
+  .progress-step.done { color: rgba(255,255,255,0.45); }
+
+  .progress-bar-wrap { height: 3px; background: rgba(255,255,255,0.07); border-radius: 2px; margin-bottom: 20px; overflow: hidden; display: none; }
+  .progress-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--ocean), var(--rust)); border-radius: 2px; transition: width 0.6s ease; }
+
+  /* Results */
+  .analysis-results { display: none; }
+
+  .results-header {
+    display: flex; align-items: center; gap: 14px; margin-bottom: 24px;
+    padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+  .results-check {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: linear-gradient(135deg, #4ade80, #22c55e);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+    box-shadow: 0 0 20px rgba(74,222,128,0.4);
+  }
+  .results-title { font-family: 'Cormorant Garamond', serif; font-size: 28px; font-weight: 300; color: var(--cream); }
+  .results-subtitle { font-size: 12px; color: rgba(255,255,255,0.3); letter-spacing: 1px; margin-top: 3px; }
+
+  .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px; }
+
+  .result-card {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px; padding: 18px 20px;
+    transition: background 0.25s, border-color 0.25s;
+  }
+  .result-card:hover { background: rgba(91,74,223,0.15); border-color: rgba(91,74,223,0.35); }
+  .result-card.primary { grid-column: 1 / -1; background: rgba(91,74,223,0.12); border-color: rgba(91,74,223,0.35); }
+
+  .rc-label { font-size: 9px; letter-spacing: 2.5px; color: rgba(255,255,255,0.28); text-transform: uppercase; margin-bottom: 8px; }
+  .rc-value { font-family: 'Cormorant Garamond', serif; font-size: 38px; font-weight: 300; color: var(--cream); line-height: 1; }
+  .rc-value.primary-val { font-size: 52px; }
+  .rc-unit { font-size: 16px; color: rgba(255,255,255,0.35); }
+  .rc-sub { font-size: 12px; color: rgba(255,255,255,0.3); margin-top: 4px; }
+
+  .confidence-row { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .confidence-label { font-size: 11px; letter-spacing: 1.5px; color: rgba(255,255,255,0.3); text-transform: uppercase; white-space: nowrap; }
+  .confidence-bar { flex: 1; height: 4px; background: rgba(255,255,255,0.07); border-radius: 2px; overflow: hidden; }
+  .confidence-fill { height: 100%; background: linear-gradient(90deg, var(--ocean), #4ade80); border-radius: 2px; transition: width 1s cubic-bezier(.22,1,.36,1); }
+  .confidence-pct { font-size: 13px; font-weight: 500; color: var(--cream); white-space: nowrap; }
+
+  .insights-section { background: rgba(255,255,255,0.03); border-radius: 14px; padding: 20px; margin-bottom: 20px; }
+  .insights-title { font-size: 10px; letter-spacing: 3px; color: rgba(255,255,255,0.25); text-transform: uppercase; margin-bottom: 14px; }
+  .insight-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: flex-start; }
+  .insight-item:last-child { margin-bottom: 0; }
+  .insight-bullet { width: 5px; height: 5px; border-radius: 50%; background: var(--ocean-light); flex-shrink: 0; margin-top: 6px; }
+  .insight-text { font-size: 13px; line-height: 1.6; color: rgba(255,255,255,0.5); }
+
+  .disclaimer {
+    background: rgba(255,193,7,0.07); border: 1px solid rgba(255,193,7,0.18);
+    border-radius: 10px; padding: 14px 16px;
+    font-size: 11px; line-height: 1.6; color: rgba(255,255,255,0.3);
+    letter-spacing: 0.3px;
+  }
+
+  .btn-scan-again {
+    width: 100%; padding: 14px; border-radius: 12px; margin-top: 16px;
+    background: rgba(91,74,223,0.2); border: 1px solid rgba(91,74,223,0.4);
+    color: rgba(255,255,255,0.7); font-family: 'DM Sans', sans-serif;
+    font-size: 12px; letter-spacing: 2px; text-transform: uppercase;
+    transition: background 0.2s, color 0.2s;
+  }
+  .btn-scan-again:hover { background: rgba(91,74,223,0.4); color: #fff; }
+
+  #capture-canvas { display: none; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    nav { padding: 20px 24px; }
+    .nav-links { display: none; }
+    .hero { grid-template-columns: 1fr; }
+    .hero-right { display: none; }
+    .hero-left { padding: 100px 24px 60px; }
+    .stats-strip { grid-template-columns: repeat(3, 1fr); padding: 40px 24px; }
+    .section { padding: 80px 24px; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .features-section { padding: 80px 24px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .cta-section { padding: 80px 24px; }
+    footer { padding: 32px 24px; flex-direction: column; gap: 16px; text-align: center; }
+    .footer-links { flex-wrap: wrap; justify-content: center; }
+    .results-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="scroll-progress"></div>
+<div class="cursor-dot" id="cursorDot"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<canvas id="particles-canvas"></canvas>
+<canvas id="capture-canvas"></canvas>
+
+<!-- ══ SCAN MODAL ══ -->
+<div class="scan-modal-overlay" id="scanModal">
+  <div class="scan-modal">
+    <div class="modal-header">
+      <div class="modal-title">Facial Scan Analysis</div>
+      <button class="modal-close" id="modalClose">✕</button>
+    </div>
+    <div class="modal-body">
+
+      <!-- Tabs — SVG icons, no emoji -->
+      <div class="modal-tabs">
+        <button class="modal-tab active" id="tabCamera" onclick="switchTab('camera')">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+          Camera
+        </button>
+        <button class="modal-tab" id="tabUpload" onclick="switchTab('upload')">
+          <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/>
+            <line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          Upload Photo
+        </button>
+      </div>
+
+      <!-- Camera Panel -->
+      <div class="modal-panel active" id="panelCamera">
+        <div class="camera-container" id="cameraContainer">
+          <video id="camera-video" autoplay playsinline muted></video>
+          <div class="camera-overlay">
+            <div class="face-guide-cam"></div>
+            <div class="scan-beam"></div>
+            <div class="cam-corner tl"></div>
+            <div class="cam-corner tr"></div>
+            <div class="cam-corner bl"></div>
+            <div class="cam-corner br"></div>
+            <div class="cam-status-badge" id="camStatusBadge">Ready to scan</div>
+          </div>
+          <div class="camera-placeholder" id="cameraPlaceholder">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Enable camera to begin
+          </div>
+        </div>
+        <div class="cam-btn-row">
+          <button class="btn-cam-start" id="btnCamStart" onclick="startCamera()">Enable Camera</button>
+          <button class="btn-cam-capture" id="btnCapture" onclick="capturePhoto()">Capture &amp; Analyze</button>
+          <button class="btn-cam-stop" id="btnCamStop" onclick="stopCamera()" title="Stop camera">■</button>
+        </div>
+      </div>
+
+      <!-- Upload Panel -->
+      <div class="modal-panel" id="panelUpload">
+        <div class="upload-zone" id="uploadZone">
+          <div class="upload-zone-icon">
+            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="rgba(124,110,245,0.7)" stroke-width="1.3">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <div class="upload-zone-title">Drop your photo here</div>
+          <div class="upload-zone-sub">
+            A clear, well-lit selfie works best.<br>
+            Supports JPG, PNG, WEBP up to 10MB.
+          </div>
+          <label for="file-input" class="btn-upload-browse">Browse Files</label>
+          <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)">
+        </div>
+
+        <!-- Face Frame Preview -->
+        <div class="face-frame-container" id="faceFrameContainer">
+          <img id="previewImg" src="" alt="Preview">
+          <div class="face-frame-overlay">
+            <!-- Oval face guide -->
+            <svg class="face-oval-svg" viewBox="0 0 100 133" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <ellipse cx="50" cy="66" rx="49" ry="65" stroke="rgba(124,110,245,0.65)" stroke-width="2" stroke-dasharray="6 4"/>
+              <!-- landmark dots -->
+              <circle cx="33" cy="52" r="2.5" fill="rgba(124,110,245,0.5)"/>
+              <circle cx="67" cy="52" r="2.5" fill="rgba(124,110,245,0.5)"/>
+              <circle cx="50" cy="75" r="2.5" fill="rgba(124,110,245,0.5)"/>
+              <line x1="33" y1="52" x2="50" y2="75" stroke="rgba(124,110,245,0.2)" stroke-width="1"/>
+              <line x1="67" y1="52" x2="50" y2="75" stroke="rgba(124,110,245,0.2)" stroke-width="1"/>
+            </svg>
+            <div class="face-frame-corners">
+              <div class="fc tl"></div>
+              <div class="fc tr"></div>
+              <div class="fc bl"></div>
+              <div class="fc br"></div>
+            </div>
+            <div class="face-frame-scan"></div>
+            <div class="face-frame-hint">Align face within the oval</div>
+          </div>
+          <button class="upload-preview-remove" onclick="removeUpload()">✕</button>
+        </div>
+
+        <div class="frame-instructions" id="frameInstructions">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(124,110,245,0.8)" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          For best results, ensure your face is centered and filling the oval guide. Good lighting improves accuracy.
+        </div>
+
+        <button class="btn-analyze" id="btnAnalyzeUpload" disabled onclick="analyzeUploadedImage()">Analyze My Face →</button>
+      </div>
+
+      <!-- Progress Overlay (shared) -->
+      <div class="progress-bar-wrap" id="progressBarWrap">
+        <div class="progress-bar-fill" id="progressBarFill"></div>
+      </div>
+      <div class="analysis-progress" id="analysisProgress">
+        <div class="progress-steps">
+          <div class="progress-step" id="step1"><span class="step-dot"></span>Detecting facial landmarks</div>
+          <div class="progress-step" id="step2"><span class="step-dot"></span>Analyzing bone structure &amp; proportions</div>
+          <div class="progress-step" id="step3"><span class="step-dot"></span>Measuring facial volume &amp; adiposity</div>
+          <div class="progress-step" id="step4"><span class="step-dot"></span>Cross-referencing biometric model</div>
+          <div class="progress-step" id="step5"><span class="step-dot"></span>Generating health estimates</div>
+        </div>
+      </div>
+
+      <!-- Results (shared) -->
+      <div class="analysis-results" id="analysisResults"></div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ══ NAV ══ -->
+<nav id="navbar">
+  <a href="#" class="nav-logo">
+    <svg class="logo-mark" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="18" cy="18" r="16" stroke="#5b4adf" stroke-width="1.2" stroke-dasharray="3 2.5" opacity="0.35"/>
+      <path d="M10 18 C10 12, 16 9, 18 13 C20 9, 26 12, 26 18" stroke="#5b4adf" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+      <path d="M26 18 C26 24, 20 27, 18 23 C16 27, 10 24, 10 18" stroke="#5b4adf" stroke-width="1.6" stroke-linecap="round" fill="none"/>
+      <line x1="12" y1="18" x2="24" y2="18" stroke="#5b4adf" stroke-width="1.2" stroke-linecap="round" opacity="0.5"/>
+      <path d="M10 18 L6.5 15 M10 18 L6.5 21" stroke="#5b4adf" stroke-width="1.4" stroke-linecap="round"/>
+      <path d="M26 18 L29.5 15 M26 18 L29.5 21" stroke="#5b4adf" stroke-width="1.4" stroke-linecap="round"/>
+      <circle cx="15.5" cy="14.8" r="1.1" fill="#5b4adf" opacity="0.75"/>
+      <circle cx="20.5" cy="21.2" r="1.1" fill="#5b4adf" opacity="0.75"/>
+    </svg>
+    Pisces
+  </a>
+  <ul class="nav-links">
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#try" onclick="openModal(); return false;" class="nav-cta">Try It Free</a></li>
+  </ul>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="hero-eyebrow">AI-Powered Health</div>
+    <h1 class="hero-headline">Know your weight.<br><em>No scale</em><br>required.</h1>
+    <p class="hero-sub">Pisces uses advanced facial biometric analysis to estimate your body weight with just a selfie. Track your health journey from anywhere — no equipment needed.</p>
+    <div class="hero-actions">
+      <a href="#" class="btn-primary" onclick="openModal(); return false;">Try It Free</a>
+      <a href="#how" class="btn-ghost">See how it works <span class="arrow">→</span></a>
+    </div>
+  </div>
+
+  <div class="hero-right">
+    <div class="wave-bg">
+      <div class="wave wave1"></div>
+      <div class="wave wave2"></div>
+      <div class="wave wave3"></div>
+    </div>
+    <div class="constellation">
+      <div class="star" style="width:4px;height:4px;top:18%;left:22%;--dur:2.8s;--delay:0s;"></div>
+      <div class="star" style="width:3px;height:3px;top:25%;left:38%;--dur:3.5s;--delay:0.4s;"></div>
+      <div class="star" style="width:5px;height:5px;top:15%;left:55%;--dur:2.2s;--delay:1s;"></div>
+      <div class="star" style="width:3px;height:3px;top:32%;left:70%;--dur:4s;--delay:0.7s;"></div>
+      <div class="star" style="width:4px;height:4px;top:72%;left:18%;--dur:3s;--delay:1.5s;"></div>
+      <div class="star" style="width:3px;height:3px;top:78%;left:35%;--dur:2.5s;--delay:0.2s;"></div>
+      <div class="star" style="width:5px;height:5px;top:80%;left:75%;--dur:3.8s;--delay:1.2s;"></div>
+      <div class="star" style="width:3px;height:3px;top:65%;left:62%;--dur:2.9s;--delay:0.8s;"></div>
+    </div>
+    <div class="decorative-circle dc1"></div>
+    <div class="decorative-circle dc2"></div>
+    <div class="hero-visual">
+      <div class="phone-mockup">
+        <div class="phone-inner">
+          <div class="phone-screen">
+            <div class="phone-notch"></div>
+            <div class="phone-label">Scan your face</div>
+            <div class="phone-face-area">
+              <div class="corner-marks"></div>
+              <div class="cm-bl"></div>
+              <div class="cm-br"></div>
+              <div class="ripple-ring"></div>
+              <div class="ripple-ring"></div>
+              <div class="ripple-ring"></div>
+              <div class="face-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(124,110,245,0.9)" stroke-width="1.5">
+                  <circle cx="12" cy="8" r="4"/>
+                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                </svg>
+              </div>
+              <div class="scan-line"></div>
+            </div>
+            <div class="phone-result">
+              <div class="pr-label">Estimated Weight</div>
+              <div class="pr-value">164 <span class="pr-unit">lbs</span></div>
+              <div class="pr-bar"><div class="pr-bar-fill"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ STATS STRIP ══ -->
+<div class="stats-strip">
+  <div class="stat reveal" data-anim="fade-up" data-delay="0">
+    <div class="stat-num">94%</div>
+    <div class="stat-label">Accuracy Rate</div>
+  </div>
+  <div class="stat reveal" data-anim="fade-up" data-delay="120">
+    <div class="stat-num">3s</div>
+    <div class="stat-label">Avg. Scan Time</div>
+  </div>
+  <div class="stat reveal" data-anim="fade-up" data-delay="240">
+    <div class="stat-num">0</div>
+    <div class="stat-label">Equipment Needed</div>
+  </div>
+</div>
+
+<!-- ══ MARQUEE ══ -->
+<div class="marquee-section">
+  <div class="marquee-track">
+    <div class="marquee-item"><span class="marquee-dot"></span> Facial Biometrics</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> No Equipment</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> 94% Accurate</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> Privacy First</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> Works in Browser</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> Daily Tracking</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> BMI Insights</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> On-Device AI</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> Facial Biometrics</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> No Equipment</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> 94% Accurate</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> Privacy First</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> Works in Browser</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> Daily Tracking</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> BMI Insights</div>
+    <div class="marquee-item"><span class="marquee-dot"></span> On-Device AI</div>
+  </div>
+</div>
+
+<!-- ══ HOW IT WORKS ══ -->
+<section class="section" id="how" style="position:relative;">
+  <div class="section-label reveal" data-anim="clip" data-delay="0">The Process</div>
+  <h2 class="section-headline reveal" data-anim="fade-up" data-delay="80">Three steps to <em>instant</em> results</h2>
+
+  <div class="steps-grid">
+    <div class="step reveal" data-anim="fade-up" data-delay="0">
+      <div class="step-num">01</div>
+      <div class="step-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="3"/>
+          <path d="M7 20.662V19a2 2 0 0 1 2-2h6a2 2 0 0 1 2 2v1.662"/>
+        </svg>
+      </div>
+      <h3>Take a Selfie</h3>
+      <p>Open Pisces in your browser and take a clear, well-lit selfie. No app download, no account setup — just you and a camera.</p>
+    </div>
+    <div class="step reveal" data-anim="fade-up" data-delay="130">
+      <div class="step-num">02</div>
+      <div class="step-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <ellipse cx="12" cy="5" rx="9" ry="3"/>
+          <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+          <path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/>
+        </svg>
+      </div>
+      <h3>AI Analyzes Your Features</h3>
+      <p>Our model reads over 200 facial biometric data points — bone structure, facial volume, proportions and more — to build a precise body composition estimate.</p>
+    </div>
+    <div class="step reveal" data-anim="fade-up" data-delay="260">
+      <div class="step-num">03</div>
+      <div class="step-icon">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+        </svg>
+      </div>
+      <h3>Track Your Progress</h3>
+      <p>See your estimated weight, BMI range, and health insights. Log daily scans to visualize your journey — all right in the browser, no equipment required.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FEATURES ══ -->
+<section class="features-section" id="features">
+  <div class="section-label reveal" data-anim="clip" data-delay="0">What Sets Us Apart</div>
+  <div class="features-grid">
+    <div class="feature-list">
+      <div class="feature-item reveal" data-anim="fade-left" data-delay="0">
+        <div class="feature-dot"></div>
+        <div>
+          <h4>Scale-Free Measurement</h4>
+          <p>Whether you're traveling, at the gym, or just at home without a scale, Pisces is always ready to give you an instant reading from any device with a camera.</p>
+        </div>
+      </div>
+      <div class="feature-item reveal" data-anim="fade-left" data-delay="100">
+        <div class="feature-dot"></div>
+        <div>
+          <h4>Daily Progress Tracking</h4>
+          <p>Build a visual timeline of your weight journey. Charts and trend lines make it easy to see patterns and stay motivated over weeks and months.</p>
+        </div>
+      </div>
+      <div class="feature-item reveal" data-anim="fade-left" data-delay="200">
+        <div class="feature-dot"></div>
+        <div>
+          <h4>Privacy First</h4>
+          <p>All analysis happens on-device. Your photos are never stored or transmitted. Your face — and your health data — belongs only to you.</p>
+        </div>
+      </div>
+      <div class="feature-item reveal" data-anim="fade-left" data-delay="300">
+        <div class="feature-dot"></div>
+        <div>
+          <h4>BMI &amp; Body Composition</h4>
+          <p>Beyond weight, Pisces estimates your BMI range and provides general body composition insights to give you a fuller picture of your health.</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="features-visual reveal" data-anim="fade-right" data-delay="100">
+      <div class="accuracy-pill">94% Accurate</div>
+      <div class="metrics-card">
+        <div class="mc-title">Today's Scan · Mar 31</div>
+        <div class="mc-main">164 <span class="mc-unit">lbs</span></div>
+        <div class="mc-sub">74.4 kg &nbsp;·&nbsp; −1.2 lbs from last week</div>
+        <div class="mc-metrics">
+          <div class="mc-metric"><div class="mc-metric-label">BMI Range</div><div class="mc-metric-val">22.4</div></div>
+          <div class="mc-metric"><div class="mc-metric-label">Trend</div><div class="mc-metric-val">↓ Losing</div></div>
+          <div class="mc-metric"><div class="mc-metric-label">Streak</div><div class="mc-metric-val">14 days</div></div>
+          <div class="mc-metric"><div class="mc-metric-label">Confidence</div><div class="mc-metric-val">91%</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CTA ══ -->
+<section class="cta-section" id="try">
+  <div class="cta-waves">
+    <div class="cta-wave-line" style="bottom:30px;--dur:7s;--delay:0s;"></div>
+    <div class="cta-wave-line" style="bottom:55px;--dur:9s;--delay:-2s;opacity:0.6;"></div>
+    <div class="cta-wave-line" style="bottom:80px;--dur:11s;--delay:-5s;opacity:0.4;"></div>
+    <div class="cta-wave-line" style="bottom:100px;--dur:6s;--delay:-1s;opacity:0.3;"></div>
+  </div>
+  <div class="section-label reveal" data-anim="clip" data-delay="0" style="justify-content:center;color:rgba(255,255,255,0.28);">
+    <span style="width:32px;height:1px;background:rgba(255,255,255,0.18);display:block;"></span>
+    Get Started
+  </div>
+  <h2 class="cta-headline reveal" data-anim="scale" data-delay="60">Your scale is<br>in your <em>browser</em></h2>
+  <p class="cta-sub reveal" data-anim="fade-up" data-delay="160">Try Pisces free today — no download, no hardware, no friction. Works on any device with a front-facing camera.</p>
+  <div class="cta-actions reveal" data-anim="fade-up" data-delay="240">
+    <a href="#" class="btn-light" onclick="openModal(); return false;">Try It Free</a>
+    <a href="#how" class="btn-ghost-light">Learn more about our technology →</a>
+  </div>
+  <div style="display:flex;justify-content:center;" class="reveal" data-anim="fade-up" data-delay="320">
+    <div class="web-badge"><div class="web-badge-dot"></div>Runs entirely in your browser</div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="footer-logo">
+    <svg viewBox="0 0 28 28" width="26" height="26" fill="none">
+      <circle cx="14" cy="14" r="12.5" stroke="#5b4adf" stroke-width="1" stroke-dasharray="2.5 2" opacity="0.3"/>
+      <path d="M7.5 14 C7.5 9.5, 12 7, 14 10.5 C16 7, 20.5 9.5, 20.5 14" stroke="#5b4adf" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+      <path d="M20.5 14 C20.5 18.5, 16 21, 14 17.5 C12 21, 7.5 18.5, 7.5 14" stroke="#5b4adf" stroke-width="1.4" stroke-linecap="round" fill="none"/>
+      <line x1="9" y1="14" x2="19" y2="14" stroke="#5b4adf" stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+      <path d="M7.5 14 L4.5 11.5 M7.5 14 L4.5 16.5" stroke="#5b4adf" stroke-width="1.2" stroke-linecap="round"/>
+      <path d="M20.5 14 L23.5 11.5 M20.5 14 L23.5 16.5" stroke="#5b4adf" stroke-width="1.2" stroke-linecap="round"/>
+    </svg>
+    Pisces
+  </div>
+  <ul class="footer-links">
+    <li><a href="#">Privacy Policy</a></li>
+    <li><a href="#">Terms of Use</a></li>
+    <li><a href="#">Support</a></li>
+    <li><a href="#">Press</a></li>
+  </ul>
+  <div class="footer-copy">© 2025 Pisces Health, Inc.</div>
+</footer>
+
+<script>
+/* ═══════════════════════════════════════
+   CURSOR
+═══════════════════════════════════════ */
+const dot  = document.getElementById('cursorDot');
+const ring = document.getElementById('cursorRing');
+let mx = -200, my = -200, rx = -200, ry = -200;
+let mouseHasMoved = false;
+
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  if (!mouseHasMoved) {
+    mouseHasMoved = true;
+    dot.style.opacity = '1';
+    ring.style.opacity = '1';
+  }
+});
+
+dot.style.opacity  = '0';
+ring.style.opacity = '0';
+
+(function trackRing() {
+  rx += (mx - rx) * 0.12;
+  ry += (my - ry) * 0.12;
+  dot.style.left  = mx + 'px';
+  dot.style.top   = my + 'px';
+  ring.style.left = rx + 'px';
+  ring.style.top  = ry + 'px';
+  requestAnimationFrame(trackRing);
+})();
+
+document.addEventListener('mouseover', e => {
+  if (e.target.matches('button, a, [onclick], .step, .feature-item, .mc-metric')) {
+    document.body.classList.add('cursor-active');
+  }
+});
+document.addEventListener('mouseout', e => {
+  if (e.target.matches('button, a, [onclick], .step, .feature-item, .mc-metric')) {
+    document.body.classList.remove('cursor-active');
+  }
+});
+
+/* ═══════════════════════════════════════
+   SCROLL PROGRESS
+═══════════════════════════════════════ */
+const progressBar = document.getElementById('scroll-progress');
+window.addEventListener('scroll', () => {
+  const pct = window.scrollY / (document.body.scrollHeight - window.innerHeight);
+  progressBar.style.width = (pct * 100) + '%';
+}, { passive: true });
+
+/* ═══════════════════════════════════════
+   NAVBAR
+═══════════════════════════════════════ */
+const navbar = document.getElementById('navbar');
+window.addEventListener('scroll', () => {
+  navbar.classList.toggle('scrolled', window.scrollY > 40);
+}, { passive: true });
+
+/* ═══════════════════════════════════════
+   PARALLAX ORBS
+═══════════════════════════════════════ */
+const orb1 = document.querySelector('.orb1');
+const orb2 = document.querySelector('.orb2');
+window.addEventListener('scroll', () => {
+  const sy = window.scrollY;
+  orb1.style.transform = `translateY(${sy * 0.18}px)`;
+  orb2.style.transform = `translateY(${-sy * 0.12}px)`;
+}, { passive: true });
+
+/* ═══════════════════════════════════════
+   SCROLL REVEAL
+═══════════════════════════════════════ */
+const reveals = document.querySelectorAll('.reveal');
+const revealObs = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const el = entry.target;
+      const delay = parseInt(el.dataset.delay || 0);
+      setTimeout(() => el.classList.add('visible'), delay);
+      revealObs.unobserve(el);
+    }
+  });
+}, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+reveals.forEach(el => {
+  if (!el.dataset.anim) el.dataset.anim = 'fade-up';
+  revealObs.observe(el);
+});
+
+/* ═══════════════════════════════════════
+   PARTICLES
+═══════════════════════════════════════ */
+const canvas = document.getElementById('particles-canvas');
+const ctx    = canvas.getContext('2d');
+let W, H, particles = [];
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', () => { resize(); initParticles(); });
+
+function Particle() {
+  this.reset = function() {
+    this.x = Math.random() * W; this.y = Math.random() * H;
+    this.r = Math.random() * 1.5 + 0.3;
+    this.vx = (Math.random() - 0.5) * 0.25;
+    this.vy = (Math.random() - 0.5) * 0.25 - 0.08;
+    this.alpha = Math.random() * 0.35 + 0.05;
+    this.color = Math.random() > 0.5 ? '91,74,223' : '124,110,245';
+  };
+  this.reset();
+}
+
+function initParticles() {
+  particles = [];
+  const count = Math.floor((W * H) / 18000);
+  for (let i = 0; i < count; i++) particles.push(new Particle());
+}
+initParticles();
+
+function drawConnections() {
+  for (let i = 0; i < particles.length; i++) {
+    for (let j = i + 1; j < particles.length; j++) {
+      const dx = particles[i].x - particles[j].x;
+      const dy = particles[i].y - particles[j].y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (dist < 110) {
+        ctx.beginPath();
+        ctx.moveTo(particles[i].x, particles[i].y);
+        ctx.lineTo(particles[j].x, particles[j].y);
+        ctx.strokeStyle = `rgba(91,74,223,${0.07 * (1 - dist / 110)})`;
+        ctx.lineWidth = 0.5; ctx.stroke();
+      }
+    }
+  }
+}
+
+function animateParticles() {
+  ctx.clearRect(0, 0, W, H);
+  drawConnections();
+  particles.forEach(p => {
+    p.x += p.vx; p.y += p.vy;
+    if (p.y < -10 || p.x < -10 || p.x > W + 10) p.reset();
+    ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+    ctx.fillStyle = `rgba(${p.color},${p.alpha})`; ctx.fill();
+  });
+  requestAnimationFrame(animateParticles);
+}
+animateParticles();
+
+/* ═══════════════════════════════════════
+   MAGNETIC BUTTONS
+═══════════════════════════════════════ */
+document.querySelectorAll('.btn-primary, .btn-light').forEach(btn => {
+  btn.addEventListener('mousemove', e => {
+    const rect = btn.getBoundingClientRect();
+    const x = e.clientX - rect.left - rect.width / 2;
+    const y = e.clientY - rect.top - rect.height / 2;
+    btn.style.transform = `translate(${x * 0.13}px, ${y * 0.13 - 2}px)`;
+  });
+  btn.addEventListener('mouseleave', () => { btn.style.transform = ''; });
+});
+
+/* ═══════════════════════════════════════
+   HERO PARALLAX
+═══════════════════════════════════════ */
+const heroHeadline = document.querySelector('.hero-headline');
+document.addEventListener('mousemove', e => {
+  if (!heroHeadline) return;
+  const nx = (e.clientX / window.innerWidth  - 0.5) * 10;
+  const ny = (e.clientY / window.innerHeight - 0.5) * 6;
+  heroHeadline.style.transform = `translate(${nx}px, ${ny}px)`;
+});
+
+/* ═══════════════════════════════════════
+   MODAL
+═══════════════════════════════════════ */
+const modal = document.getElementById('scanModal');
+
+function openModal() {
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+  modal.classList.remove('open');
+  document.body.style.overflow = '';
+  stopCamera();
+}
+
+document.getElementById('modalClose').addEventListener('click', closeModal);
+modal.addEventListener('click', e => { if (e.target === modal) closeModal(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+function switchTab(tab) {
+  document.getElementById('tabCamera').classList.toggle('active', tab === 'camera');
+  document.getElementById('tabUpload').classList.toggle('active', tab === 'upload');
+  document.getElementById('panelCamera').classList.toggle('active', tab === 'camera');
+  document.getElementById('panelUpload').classList.toggle('active', tab === 'upload');
+}
+
+/* ═══════════════════════════════════════
+   CAMERA
+═══════════════════════════════════════ */
+let stream = null;
+const video = document.getElementById('camera-video');
+const capCanvas = document.getElementById('capture-canvas');
+const capCtx = capCanvas.getContext('2d');
+
+async function startCamera() {
+  const placeholder = document.getElementById('cameraPlaceholder');
+  const container = document.getElementById('cameraContainer');
+  const btnStart = document.getElementById('btnCamStart');
+  const btnCapture = document.getElementById('btnCapture');
+  const btnStop = document.getElementById('btnCamStop');
+  const badge = document.getElementById('camStatusBadge');
+
+  try {
+    badge.textContent = 'Requesting access...';
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    video.srcObject = stream;
+    placeholder.style.display = 'none';
+    container.classList.add('camera-active');
+    btnStart.style.display = 'none';
+    btnCapture.style.display = 'block';
+    btnStop.style.display = 'block';
+    badge.textContent = 'Position face in frame';
+
+  } catch (err) {
+    console.error('Camera error:', err);
+    badge.textContent = 'Camera unavailable';
+    placeholder.innerHTML = `
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" style="opacity:0.3">
+        <line x1="2" y1="2" x2="22" y2="22"/><path d="M10.68 10.68a2 2 0 0 0 2.64 2.64"/><path d="M11 5a4 4 0 0 1 4 4v.28"/>
+        <path d="M14.12 14.12 19 19m-7 1c-4 0-7.3-2.6-8-6M3 3l3 3"/>
+      </svg>
+      <span style="font-size:12px;text-align:center;max-width:220px;line-height:1.6">
+        Camera access was denied or unavailable.<br>
+        <span style="color:rgba(124,110,245,0.7)">Use the Upload tab instead</span> to analyze a photo.
+      </span>
+    `;
+    placeholder.style.display = 'flex';
+    setTimeout(() => switchTab('upload'), 1400);
+  }
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop());
+    stream = null;
+  }
+  video.srcObject = null;
+  const placeholder = document.getElementById('cameraPlaceholder');
+  const container = document.getElementById('cameraContainer');
+  const btnStart = document.getElementById('btnCamStart');
+  const btnCapture = document.getElementById('btnCapture');
+  const btnStop = document.getElementById('btnCamStop');
+
+  placeholder.innerHTML = `
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+      <circle cx="12" cy="13" r="4"/>
+    </svg>
+    Enable camera to begin
+  `;
+  placeholder.style.display = 'flex';
+  container.classList.remove('camera-active');
+  btnStart.style.display = 'block';
+  btnCapture.style.display = 'none';
+  btnStop.style.display = 'none';
+  document.getElementById('camStatusBadge').textContent = 'Ready to scan';
+}
+
+function capturePhoto() {
+  if (!stream) return;
+  capCanvas.width  = video.videoWidth  || 640;
+  capCanvas.height = video.videoHeight || 480;
+  capCtx.save();
+  capCtx.scale(-1, 1);
+  capCtx.drawImage(video, -capCanvas.width, 0);
+  capCtx.restore();
+  const imageData = capCanvas.toDataURL('image/jpeg', 0.9);
+  stopCamera();
+  runAnalysis(imageData);
+}
+
+/* ═══════════════════════════════════════
+   FILE UPLOAD
+═══════════════════════════════════════ */
+let uploadedImageData = null;
+
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) loadFile(file);
+});
+
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) loadFile(file);
+}
+
+function loadFile(file) {
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    uploadedImageData = e.target.result;
+    const img = document.getElementById('previewImg');
+    const container = document.getElementById('faceFrameContainer');
+    const instructions = document.getElementById('frameInstructions');
+    img.src = uploadedImageData;
+    container.style.display = 'block';
+    container.classList.add('has-image');
+    instructions.style.display = 'flex';
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('btnAnalyzeUpload').disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+function removeUpload() {
+  uploadedImageData = null;
+  const img = document.getElementById('previewImg');
+  const container = document.getElementById('faceFrameContainer');
+  const instructions = document.getElementById('frameInstructions');
+  img.src = '';
+  container.style.display = 'none';
+  container.classList.remove('has-image');
+  instructions.style.display = 'none';
+  document.getElementById('uploadZone').style.display = 'block';
+  document.getElementById('btnAnalyzeUpload').disabled = true;
+  document.getElementById('file-input').value = '';
+}
+
+function analyzeUploadedImage() {
+  if (!uploadedImageData) return;
+  runAnalysis(uploadedImageData);
+}
+
+/* ═══════════════════════════════════════
+   ANALYSIS ENGINE — Claude Vision API
+═══════════════════════════════════════ */
+async function runAnalysis(imageDataUrl) {
+  // Show progress UI
+  document.getElementById('analysisProgress').style.display = 'block';
+  document.getElementById('progressBarWrap').style.display = 'block';
+  document.getElementById('analysisResults').style.display = 'none';
+  document.getElementById('panelCamera').style.display = 'none';
+  document.getElementById('panelUpload').style.display = 'none';
+
+  const steps = [
+    document.getElementById('step1'),
+    document.getElementById('step2'),
+    document.getElementById('step3'),
+    document.getElementById('step4'),
+    document.getElementById('step5'),
+  ];
+  const progressFill = document.getElementById('progressBarFill');
+
+  function setStep(i) {
+    steps.forEach((s, idx) => {
+      s.classList.remove('active', 'done');
+      if (idx < i) s.classList.add('done');
+      if (idx === i) s.classList.add('active');
+    });
+    progressFill.style.width = ((i / steps.length) * 85 + 5) + '%';
+  }
+
+  setStep(0);
+  const stepTimings = [0, 700, 1500, 2400, 3400];
+  stepTimings.forEach((delay, i) => setTimeout(() => setStep(i), delay));
+
+  // Extract base64 and media type
+  const base64Data = imageDataUrl.split(',')[1];
+  const mediaType  = imageDataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
+
+  const systemPrompt = `You are Pisces, a precision facial biometric analysis AI. Your task is to analyze a user's face and estimate body weight and health metrics.
+
+Analyze the provided facial photo with extreme detail across ALL of the following dimensions:
+1. Facial Adiposity — submental fat (chin/neck area), cheek fullness, periorbital fat pads, nasolabial fold depth
+2. Bone Structure — jaw width, zygomatic arch prominence, orbital bone definition, temporal width, forehead breadth
+3. Facial Volume Distribution — where fat appears to deposit vs. where skeletal structure is visible
+4. Skin Texture and Tension — skin laxity indicators, facial contour sharpness vs. softness
+5. Facial Width-to-Height Ratio (fWHR) — correlates with body composition
+6. Neck/Jawline Definition — a strong indicator of body fat percentage
+7. Overall Facial Geometry — oval, round, square, heart, oblong shapes each correlate with different body types
+
+Based on ALL of these biometric observations, provide your analysis in this exact JSON format with no markdown, no code fences, just raw JSON:
+
+{
+  "weight_lbs": <integer estimate, e.g. 158>,
+  "weight_kg": <number one decimal, e.g. 71.7>,
+  "bmi": <number one decimal, e.g. 23.4>,
+  "bmi_category": "<Underweight | Normal weight | Overweight | Obese>",
+  "body_fat_pct": "<range string, e.g. 18-22%>",
+  "confidence": <integer 70-96>,
+  "build": "<Slender | Lean | Athletic | Average | Stocky | Heavy>",
+  "facial_observations": [
+    "<specific observation 1 in plain language>",
+    "<specific observation 2>",
+    "<specific observation 3>",
+    "<specific observation 4>"
+  ],
+  "health_insights": [
+    "<actionable health insight 1>",
+    "<health insight 2>"
+  ],
+  "scan_quality": "<Good | Fair | Poor>"
+}
+
+Be genuinely analytical — actually study the image carefully. Give a real estimate based on what you observe. Always provide concrete numbers.`;
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-5',
+        max_tokens: 1000,
+        system: systemPrompt,
+        messages: [{
+          role: 'user',
+          content: [
+            {
+              type: 'image',
+              source: { type: 'base64', media_type: mediaType, data: base64Data }
+            },
+            {
+              type: 'text',
+              text: 'Analyze this facial photo and return the JSON biometric assessment. Study the face carefully before responding.'
+            }
+          ]
+        }]
+      })
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('API error status:', response.status, errText);
+      throw new Error(`API returned ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    if (!data.content || data.content.length === 0) {
+      throw new Error('Empty response from API');
+    }
+
+    const rawText = data.content.map(b => b.text || '').join('');
+
+    // Parse JSON — strip any possible fences
+    let analysis;
+    try {
+      const clean = rawText.replace(/```json|```/g, '').trim();
+      const jsonMatch = clean.match(/\{[\s\S]*\}/);
+      analysis = JSON.parse(jsonMatch ? jsonMatch[0] : clean);
+    } catch (parseErr) {
+      console.error('JSON parse error. Raw response was:', rawText);
+      throw new Error('Could not parse analysis response');
+    }
+
+    // Complete progress
+    steps.forEach(s => s.classList.remove('active'));
+    steps[steps.length - 1].classList.add('done');
+    progressFill.style.width = '100%';
+
+    await new Promise(r => setTimeout(r, 600));
+    showResults(analysis);
+
+  } catch (err) {
+    console.error('Analysis error:', err);
+    document.getElementById('analysisProgress').style.display = 'none';
+    document.getElementById('progressBarWrap').style.display = 'none';
+
+    // Restore panels
+    const activeTab = document.querySelector('.modal-tab.active')?.id === 'tabCamera' ? 'camera' : 'upload';
+    document.getElementById('panelCamera').style.display = activeTab === 'camera' ? 'block' : 'none';
+    document.getElementById('panelUpload').style.display = activeTab === 'upload' ? 'block' : 'none';
+
+    // Show inline error instead of alert
+    const errBanner = document.createElement('div');
+    errBanner.style.cssText = `
+      background: rgba(255,60,60,0.1); border: 1px solid rgba(255,60,60,0.3);
+      border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
+      font-size: 12px; color: rgba(255,120,120,0.85); letter-spacing: 0.5px; line-height: 1.6;
+    `;
+    errBanner.textContent = 'Analysis could not complete. Please ensure your photo is clear and well-lit with your face visible, then try again.';
+    const panel = document.getElementById(activeTab === 'camera' ? 'panelCamera' : 'panelUpload');
+    panel.prepend(errBanner);
+    setTimeout(() => errBanner.remove(), 5000);
+  }
+}
+
+function showResults(r) {
+  document.getElementById('analysisProgress').style.display = 'none';
+  document.getElementById('progressBarWrap').style.display = 'none';
+
+  const resultsEl = document.getElementById('analysisResults');
+  const bmiColor = r.bmi < 18.5 ? '#60a5fa' : r.bmi < 25 ? '#4ade80' : r.bmi < 30 ? '#fbbf24' : '#f87171';
+
+  const observationItems = (r.facial_observations || []).map(obs =>
+    `<div class="insight-item"><div class="insight-bullet"></div><div class="insight-text">${obs}</div></div>`
+  ).join('');
+
+  const healthItems = (r.health_insights || []).map(ins =>
+    `<div class="insight-item"><div class="insight-bullet" style="background:#4ade80;"></div><div class="insight-text">${ins}</div></div>`
+  ).join('');
+
+  resultsEl.innerHTML = `
+    <div class="results-header">
+      <div class="results-check">✓</div>
+      <div>
+        <div class="results-title">Analysis Complete</div>
+        <div class="results-subtitle">Scan quality: ${r.scan_quality || 'Good'} &nbsp;·&nbsp; ${r.build || 'Average'} build</div>
+      </div>
+    </div>
+
+    <div class="results-grid">
+      <div class="result-card primary">
+        <div class="rc-label">Estimated Weight</div>
+        <div class="rc-value primary-val">${r.weight_lbs} <span class="rc-unit">lbs</span></div>
+        <div class="rc-sub">${r.weight_kg} kg</div>
+      </div>
+      <div class="result-card">
+        <div class="rc-label">BMI</div>
+        <div class="rc-value" style="color:${bmiColor}">${r.bmi}</div>
+        <div class="rc-sub">${r.bmi_category}</div>
+      </div>
+      <div class="result-card">
+        <div class="rc-label">Est. Body Fat</div>
+        <div class="rc-value" style="font-size:28px">${r.body_fat_pct}</div>
+      </div>
+    </div>
+
+    <div class="confidence-row">
+      <span class="confidence-label">Confidence</span>
+      <div class="confidence-bar"><div class="confidence-fill" style="width:0%"></div></div>
+      <span class="confidence-pct">${r.confidence}%</span>
+    </div>
+
+    <div class="insights-section">
+      <div class="insights-title">Facial Observations</div>
+      ${observationItems}
+    </div>
+
+    ${healthItems ? `
+    <div class="insights-section" style="border:1px solid rgba(74,222,128,0.12);">
+      <div class="insights-title" style="color:rgba(74,222,128,0.5);">Health Insights</div>
+      ${healthItems}
+    </div>` : ''}
+
+    <div class="disclaimer">
+      ⚠ This estimate is for informational purposes only and is not a medical measurement. Results may vary by ±10–15% based on photo angle, lighting, and individual anatomy. Consult a healthcare professional for accurate health assessments.
+    </div>
+
+    <button class="btn-scan-again" onclick="resetModal()">← Scan Another Photo</button>
+  `;
+
+  resultsEl.style.display = 'block';
+
+  setTimeout(() => {
+    const fill = resultsEl.querySelector('.confidence-fill');
+    if (fill) fill.style.width = r.confidence + '%';
+  }, 150);
+}
+
+function resetModal() {
+  document.getElementById('analysisResults').style.display = 'none';
+  document.getElementById('analysisProgress').style.display = 'none';
+  document.getElementById('progressBarWrap').style.display = 'none';
+  document.getElementById('progressBarFill').style.width = '0%';
+
+  ['step1','step2','step3','step4','step5'].forEach(id => {
+    const el = document.getElementById(id);
+    el.classList.remove('active', 'done');
+  });
+
+  const activeTab = document.querySelector('.modal-tab.active')?.id === 'tabCamera' ? 'camera' : 'upload';
+  document.getElementById('panelCamera').style.display = activeTab === 'camera' ? 'block' : 'none';
+  document.getElementById('panelUpload').style.display = activeTab === 'upload' ? 'block' : 'none';
+
+  if (activeTab === 'upload') removeUpload();
+}
+</script>
+</body>
+</html>
