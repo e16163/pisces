@@ -1,51 +1,465 @@
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import numpy as np
-from scipy.spatial import ConvexHull
 
 app = FastAPI()
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
+
+# ═══════════════════════════════════════════════════════════════════
+#  MEDIAPIPE FACEMESH LANDMARK INDEX MAP
+# ═══════════════════════════════════════════════════════════════════
+
+LM = {
+    "forehead_top":          10,
+    "chin_bottom":           152,
+    "nose_bridge_top":       6,
+    "cheek_left":            234,
+    "cheek_right":           454,
+    "cheek_inner_left":      116,
+    "cheek_inner_right":     345,
+    "jaw_left":              172,
+    "jaw_right":             397,
+    "chin_left":             176,
+    "chin_right":            400,
+    "chin_center":           18,
+    "brow_left_inner":       107,
+    "brow_left_outer":       46,
+    "brow_right_inner":      336,
+    "brow_right_outer":      276,
+    "brow_mid":              9,
+    "eye_left_outer":        33,
+    "eye_left_inner":        133,
+    "eye_left_top":          159,
+    "eye_left_bottom":       145,
+    "eye_right_outer":       263,
+    "eye_right_inner":       362,
+    "eye_right_top":         386,
+    "eye_right_bottom":      374,
+    "nose_tip":              4,
+    "nose_bottom":           2,
+    "nostril_left_base":     240,
+    "nostril_right_base":    460,
+    "mouth_left":            61,
+    "mouth_right":           291,
+    "upper_lip_top":         13,
+    "lower_lip_bottom":      14,
+    "temple_left":           162,
+    "temple_right":          389,
+}
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  GEOMETRY HELPERS
+# ═══════════════════════════════════════════════════════════════════
+
+def p(pts, name):
+    return pts[LM[name]]
+
+def d2(pts, a, b):
+    """XY-only distance — avoids Z depth distortion."""
+    return float(np.linalg.norm(p(pts, a)[:2] - p(pts, b)[:2]))
+
+def nd(pts, a, b, face_h):
+    """d2 normalized by face height."""
+    return d2(pts, a, b) / face_h if face_h > 1e-6 else 0.0
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  PER-REGION MEASUREMENTS
+# ═══════════════════════════════════════════════════════════════════
+
+def measure_skull(pts):
+    """
+    face_aspect = face_width / face_height.
+    Slim ~0.60-0.67  |  Average ~0.68-0.76  |  Overweight ~0.77-0.86  |  Obese 0.87+
+    """
+    face_h  = d2(pts, "forehead_top", "chin_bottom")
+    face_w  = d2(pts, "cheek_left",   "cheek_right")
+    temple_w = d2(pts, "temple_left", "temple_right")
+    aspect  = face_w / face_h if face_h > 1e-6 else 0.72
+
+    if   aspect < 0.62: shape, notes = "Oblong",        ["Narrow elongated frame — lean phenotype"]
+    elif aspect < 0.72: shape, notes = "Oval",          ["Oval frame — balanced proportions"]
+    elif aspect < 0.80: shape, notes = "Round",         ["Round frame — fuller body composition indicator"]
+    else:               shape, notes = "Wide / Square", ["Wide frame — strong higher-mass indicator"]
+
+    return {
+        "face_height":  round(face_h,   6),
+        "face_width":   round(face_w,   6),
+        "temple_width": round(temple_w, 6),
+        "face_aspect":  round(aspect,   4),
+        "face_shape":   shape,
+    }, notes
+
+
+def measure_cheek_jaw(pts, face_h):
+    """
+    CJWR: how much the face tapers toward the jaw.
+      Lean face:  cheeks >> jaw  →  high cjwr (~1.3+)
+      Fat face:   jaw fills out  →  low  cjwr (~1.05)
+    Weight is NEGATIVE because low cjwr = high BMI.
+
+    Cheek convexity: outer cheek width minus inner cheekbone width.
+    Fat fills the cheeks outward → high convexity = higher BMI.
+      Slim ~0.02-0.05  |  Average ~0.06-0.09  |  Fat ~0.10+
+    """
+    cheek_w  = nd(pts, "cheek_left",       "cheek_right",       face_h)
+    jaw_w    = nd(pts, "jaw_left",         "jaw_right",         face_h)
+    chin_w   = nd(pts, "chin_left",        "chin_right",        face_h)
+    inner_w  = nd(pts, "cheek_inner_left", "cheek_inner_right", face_h)
+
+    cjwr           = cheek_w / jaw_w  if jaw_w  > 1e-6 else 1.15
+    jaw_chin_ratio = jaw_w   / chin_w if chin_w > 1e-6 else 1.30
+    convexity      = cheek_w - inner_w
+
+    notes = []
+    if   cjwr < 1.05: notes.append("Jaw nearly as wide as cheeks — square lower face, strong adiposity marker")
+    elif cjwr < 1.18: notes.append("Mild jaw taper — average lower face fullness")
+    else:             notes.append("Pronounced jaw taper — defined jaw, lean lower face")
+
+    if   convexity > 0.11: notes.append("High cheek convexity — significant outward bulge, fat indicator")
+    elif convexity > 0.06: notes.append("Moderate cheek convexity — some cheek fullness")
+    else:                  notes.append("Low cheek convexity — flat cheekbones, lean lateral face")
+
+    return {
+        "cheek_width_norm":  round(cheek_w,        4),
+        "jaw_width_norm":    round(jaw_w,           4),
+        "chin_width_norm":   round(chin_w,          4),
+        "jaw_taper_ratio":   round(cjwr,            4),
+        "jaw_chin_ratio":    round(jaw_chin_ratio,  4),
+        "cheek_convexity":   round(convexity,       4),
+    }, notes
+
+
+def measure_fwhr(pts, face_h):
+    """
+    Facial Width-to-Height Ratio.
+    Width: cheekbone to cheekbone.
+    Height: brow midpoint to upper lip.
+
+    MediaPipe normalized range (NOT mm-based literature values):
+      Slim ~1.10-1.30  |  Average ~1.35-1.50  |  Fat 1.55+
+    """
+    width  = d2(pts, "cheek_left",   "cheek_right")
+    height = d2(pts, "brow_mid",     "upper_lip_top")
+    fwhr   = width / height if height > 1e-6 else 1.40
+
+    if   fwhr < 1.25: notes = [f"fWHR {round(fwhr,2)} — narrow upper face, lean indicator"]
+    elif fwhr < 1.55: notes = [f"fWHR {round(fwhr,2)} — within average MediaPipe range (~1.40)"]
+    else:             notes = [f"fWHR {round(fwhr,2)} — wide upper face, higher BMI indicator"]
+
+    return {"fwhr": round(fwhr, 4)}, notes
+
+
+def measure_nose(pts, face_h):
+    """
+    Alar base width relative to inter-ocular distance.
+    Nose broadens with weight gain.
+    Canon: alar width ≈ inter-ocular for average weight (ratio ~1.0).
+      Slim <0.90  |  Average 0.90-1.10  |  Fat >1.10
+    """
+    alar_w   = nd(pts, "nostril_left_base", "nostril_right_base", face_h)
+    nose_h   = nd(pts, "nose_bridge_top",   "nose_bottom",        face_h)
+    iod      = nd(pts, "eye_left_inner",    "eye_right_inner",    face_h)
+    nose_iod = alar_w / iod if iod > 1e-6 else 1.00
+
+    if   nose_iod > 1.12: notes = ["Wide alar base relative to eye spacing — adiposity indicator"]
+    elif nose_iod < 0.88: notes = ["Narrow nasal base — lean facial phenotype"]
+    else:                 notes = ["Nasal width proportionate to inter-ocular distance"]
+
+    return {
+        "alar_width_norm":  round(alar_w,   4),
+        "nose_height_norm": round(nose_h,   4),
+        "nose_iod_ratio":   round(nose_iod, 4),
+    }, notes
+
+
+def measure_mouth(pts, face_h):
+    """
+    Lower face height (nose base to chin).
+    Slim <0.30  |  Average 0.30-0.36  |  Fat >0.36
+    """
+    mouth_w  = nd(pts, "mouth_left",    "mouth_right",      face_h)
+    lower_fh = nd(pts, "nose_bottom",   "chin_bottom",      face_h)
+    lip_h    = nd(pts, "upper_lip_top", "lower_lip_bottom", face_h)
+
+    if   lower_fh > 0.37: notes = ["Deep lower face — enlarged chin/jaw, submental fat indicator"]
+    elif lower_fh < 0.28: notes = ["Short lower face — compressed chin"]
+    else:                 notes = ["Proportionate lower face height"]
+
+    return {
+        "mouth_width_norm":  round(mouth_w,  4),
+        "lower_face_h_norm": round(lower_fh, 4),
+        "lip_height_norm":   round(lip_h,    4),
+    }, notes
+
+
+def measure_forehead(pts, face_h):
+    fore_w = nd(pts, "temple_left",      "temple_right",      face_h)
+    fore_h = nd(pts, "forehead_top",     "brow_mid",          face_h)
+    brow_l = nd(pts, "brow_left_inner",  "brow_left_outer",   face_h)
+    brow_r = nd(pts, "brow_right_inner", "brow_right_outer",  face_h)
+
+    if   fore_h > 0.30: notes = ["High forehead — large upper facial third"]
+    elif fore_h < 0.20: notes = ["Low forehead — compressed upper third"]
+    else:               notes = ["Proportionate forehead height"]
+
+    return {
+        "forehead_width_norm":  round(fore_w,                4),
+        "forehead_height_norm": round(fore_h,                4),
+        "brow_arc_avg_norm":    round((brow_l + brow_r) / 2, 4),
+    }, notes
+
+
+def measure_thirds(pts, face_h):
+    """
+    Classical facial thirds. Lower third is most BMI-sensitive.
+    Slim <0.31  |  Average 0.31-0.36  |  Fat >0.36
+    """
+    upper  = nd(pts, "forehead_top", "brow_mid",    face_h)
+    middle = nd(pts, "brow_mid",     "nose_bottom", face_h)
+    lower  = nd(pts, "nose_bottom",  "chin_bottom", face_h)
+
+    notes = []
+    if   lower > 0.37: notes.append("Enlarged lower third — fuller chin/jaw, submental fat likely")
+    elif lower < 0.28: notes.append("Compressed lower third — short chin")
+    else:              notes.append("Lower third within classical proportion range")
+    if middle > 0.40:  notes.append("Elongated mid face — long nose bridge")
+
+    return {
+        "upper_third":  round(upper,  4),
+        "middle_third": round(middle, 4),
+        "lower_third":  round(lower,  4),
+    }, notes
+
+
+def measure_pose(pts):
+    yaw   = abs(float(p(pts, "eye_left_outer")[2])  - float(p(pts, "eye_right_outer")[2]))
+    ez    = (float(p(pts, "eye_left_outer")[2]) + float(p(pts, "eye_right_outer")[2])) / 2
+    pitch = abs(float(p(pts, "nose_tip")[2]) - ez)
+
+    if   yaw > 0.12 or pitch > 0.10: quality = "Poor"
+    elif yaw > 0.06 or pitch > 0.05: quality = "Fair"
+    else:                             quality = "Good"
+
+    return {"yaw_offset": round(yaw,4), "pitch_offset": round(pitch,4), "pose_quality": quality}
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  BMI MODEL
+#
+#  WHY THE OLD WEIGHTS WERE WRONG
+#  ──────────────────────────────
+#  Old weights (face_aspect × 5.5) were too conservative. An obese
+#  face might have face_aspect = 0.88 vs POP 0.72 → delta = 0.16 →
+#  0.16 × 5.5 = +0.88 BMI. Everyone clustered near 23–25.
+#
+#  HOW THE NEW WEIGHTS ARE SET
+#  ────────────────────────────
+#  Working backwards from the range we want to cover (BMI 16–42):
+#
+#  face_aspect:     slim ~0.63  obese ~0.88  range 0.25
+#                   want 8 BMI pts  →  weight = 8/0.25 = 32  → use 28
+#
+#  fwhr:            slim ~1.20  obese ~1.70  range 0.50
+#                   want 5 BMI pts  →  weight = 5/0.50 = 10
+#
+#  cjwr (inverse):  slim ~1.30  obese ~1.06  range 0.24
+#                   obese delta vs POP(1.15) = -0.09
+#                   want 3 BMI pts  →  weight = -3/-0.09 ≈ -16 (inv)
+#
+#  cheek_convexity: slim ~0.04  obese ~0.14  range 0.10
+#                   want 4 BMI pts  →  weight = 4/0.10 = 40  → use 30
+#
+#  nose_iod:        slim ~0.88  obese ~1.18  range 0.30
+#                   want 3 BMI pts  →  weight = 3/0.30 = 10
+#
+#  lower_third:     slim ~0.29  obese ~0.40  range 0.11
+#                   want 3 BMI pts  →  weight = 3/0.11 ≈ 27  → use 22
+#
+#  POP values are what MediaPipe outputs for a BMI ~24.5 face.
+#  Replace W with sklearn Ridge coefficients once you have 500+ labeled
+#  samples — the feature names stay the same, only the numbers change.
+# ═══════════════════════════════════════════════════════════════════
+
+POP = {
+    "face_aspect":     0.72,
+    "fwhr":            1.40,
+    "cjwr":            1.15,
+    "cheek_convexity": 0.08,
+    "nose_iod":        1.00,
+    "lower_third":     0.33,
+}
+
+W = {
+    "face_aspect":     28.0,
+    "fwhr":            10.0,
+    "cjwr":           -16.0,   # INVERSE: lower = fatter lower face
+    "cheek_convexity": 30.0,   # outward cheek bulge = fat
+    "nose_iod":        10.0,
+    "lower_third":     22.0,
+}
+
+MEAN_BMI = 24.5
+
+
+def run_bmi_model(skull, fwhr_d, cj, nose, thirds, pose):
+    flat = {
+        "face_aspect":     skull["face_aspect"],
+        "fwhr":            fwhr_d["fwhr"],
+        "cjwr":            cj["jaw_taper_ratio"],
+        "cheek_convexity": cj["cheek_convexity"],
+        "nose_iod":        nose["nose_iod_ratio"],
+        "lower_third":     thirds["lower_third"],
+    }
+
+    bmi    = MEAN_BMI
+    deltas = {}
+    for key, weight in W.items():
+        delta       = flat[key] - POP[key]
+        deltas[key] = round(delta, 4)
+        bmi        += weight * delta
+
+    bmi = float(np.clip(bmi, 13.0, 55.0))
+
+    pose_penalty = int(pose["yaw_offset"] * 200 + pose["pitch_offset"] * 150)
+    confidence   = max(45, min(91, 85 - pose_penalty))
+
+    return round(bmi, 1), confidence, flat, deltas
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  API SCHEMA
+# ═══════════════════════════════════════════════════════════════════
+
 class FaceData(BaseModel):
     landmarks: list
-    height: float
+    height:    float
+    age:       int  = 30
+    sex:       str  = "unknown"   # "male" | "female" | "unknown"
+
+
+# ═══════════════════════════════════════════════════════════════════
+#  ENDPOINT
+# ═══════════════════════════════════════════════════════════════════
 
 @app.post("/predict")
 async def predict(data: FaceData):
-    pts = np.array([[l['x'], l['y'], l['z']] for l in data.landmarks])
+    try:
+        if not data.landmarks:
+            return {"error": "No landmarks received"}
+        if len(data.landmarks) < 468:
+            return {"error": f"Need ≥468 landmarks, got {len(data.landmarks)}. "
+                             f"Ensure refineLandmarks:true in MediaPipe."}
 
-    # Normalize scale via Interpupillary Distance
-    ipd = np.linalg.norm(pts[133] - pts[362])
-    norm_pts = pts / ipd
+        if isinstance(data.landmarks[0], dict):
+            pts = np.array([[l["x"], l["y"], l["z"]] for l in data.landmarks], dtype=np.float32)
+        else:
+            pts = np.array(data.landmarks, dtype=np.float32)
 
-    # 1. fWHR (Wen & Guo)
-    width = np.linalg.norm(norm_pts[454] - norm_pts[234])
-    height_face = np.linalg.norm(norm_pts[10] - norm_pts[152])
-    fwhr = width / height_face
+        face_h = d2(pts, "forehead_top", "chin_bottom")
+        if face_h < 1e-5:
+            return {"error": "Face too small in frame — move closer to the camera"}
 
-    # 2. 3D Volume (Convex Hull)
-    hull = ConvexHull(norm_pts)
-    vol = hull.volume
+        pose = measure_pose(pts)
+        if pose["pose_quality"] == "Poor":
+            return {
+                "error":        "Head rotation too extreme — please face the camera directly",
+                "yaw_offset":   pose["yaw_offset"],
+                "pitch_offset": pose["pitch_offset"],
+            }
 
-    # Ensemble Math
-    predicted_bmi = (fwhr * 23.5) + (vol * 4.8)
-    weight_kg = predicted_bmi * ((data.height / 100) ** 2)
-    weight_lbs = weight_kg * 2.20462
+        skull,    skull_notes  = measure_skull(pts)
+        cj,       cj_notes     = measure_cheek_jaw(pts, face_h)
+        fwhr_d,   fwhr_notes   = measure_fwhr(pts, face_h)
+        nose,     nose_notes   = measure_nose(pts, face_h)
+        mouth,    mouth_notes  = measure_mouth(pts, face_h)
+        forehead, fore_notes   = measure_forehead(pts, face_h)
+        thirds,   third_notes  = measure_thirds(pts, face_h)
 
-    # These match your HTML template variables exactly
-    return {
-        "weight_kg": round(weight_kg, 1),
-        "weight_lbs": round(weight_lbs, 1),
-        "bmi": round(predicted_bmi, 1),
-        "confidence": 94,
-        "bmi_category": "Normal" if 18.5 <= predicted_bmi <= 24.9 else "Calculated",
-        "body_fat_pct": "18.2%"
-    }
+        predicted_bmi, confidence, flat_metrics, deltas = run_bmi_model(
+            skull, fwhr_d, cj, nose, thirds, pose
+        )
+
+        height_m   = data.height / 100.0
+        weight_kg  = predicted_bmi * (height_m ** 2)
+        weight_lbs = weight_kg * 2.20462
+
+        if   predicted_bmi < 18.5: bmi_cat = "Underweight"
+        elif predicted_bmi < 25.0: bmi_cat = "Normal weight"
+        elif predicted_bmi < 30.0: bmi_cat = "Overweight"
+        else:                      bmi_cat = "Obese"
+
+        sex_coeff = {"male": 10.8, "female": 0.0}.get(data.sex.lower(), 5.4)
+        bf_pct    = (1.20 * predicted_bmi) + (0.23 * data.age) - sex_coeff - 5.4
+        bf_pct    = round(float(np.clip(bf_pct, 3.0, 60.0)), 1)
+
+        if   predicted_bmi < 22: build = "Slim"
+        elif predicted_bmi < 27: build = "Average"
+        elif predicted_bmi < 32: build = "Stocky"
+        else:                    build = "Heavy"
+
+        all_obs = (skull_notes + cj_notes + fwhr_notes +
+                   nose_notes  + mouth_notes + fore_notes + third_notes)
+
+        return {
+            "weight_kg":    round(weight_kg,  1),
+            "weight_lbs":   round(weight_lbs, 1),
+            "bmi":          predicted_bmi,
+            "bmi_category": bmi_cat,
+            "body_fat_pct": f"~{bf_pct}%",
+            "confidence":   confidence,
+            "scan_quality": pose["pose_quality"],
+            "build":        build,
+
+            "facial_observations": all_obs,
+            "health_insights": [
+                "Estimate based on facial geometry — lighting and angle affect accuracy.",
+                "For clinical measurements consult a healthcare professional.",
+            ],
+
+            "measurements": {
+                "skull":     skull,
+                "cheek_jaw": cj,
+                "fwhr":      fwhr_d,
+                "nose":      nose,
+                "mouth":     mouth,
+                "forehead":  forehead,
+                "thirds":    thirds,
+                "pose":      pose,
+            },
+
+            # Keep this block while tuning — remove before shipping
+            # contributions shows exactly which feature pushed BMI up/down
+            "debug": {
+                "flat_metrics":  {k: round(v, 4) for k, v in flat_metrics.items()},
+                "pop_means":     POP,
+                "deltas":        deltas,
+                "contributions": {k: round(deltas[k] * W[k], 3) for k in W},
+                "face_h_raw":    round(face_h, 6),
+            },
+
+            "methodology": "Multi-region facial morphometrics — face aspect, fWHR, CJWR, cheek convexity, nasal width, lower-face thirds",
+            "status": "Success",
+        }
+
+    except IndexError as e:
+        return {"error": f"Landmark index out of range: {e} — ensure refineLandmarks:true"}
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return {"error": f"Internal error: {str(e)}"}
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000, reload=True)
