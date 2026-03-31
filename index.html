@@ -601,7 +601,6 @@
   .modal-tab.active { background: var(--ocean); color: #fff; }
   .modal-tab:hover:not(.active) { color: rgba(255,255,255,0.65); background: rgba(255,255,255,0.06); }
 
-  /* Tab icons — SVG only, no emoji */
   .tab-icon { width: 14px; height: 14px; flex-shrink: 0; }
 
   /* Panels */
@@ -721,16 +720,67 @@
   /* ── FACE FRAME PREVIEW ── */
   .face-frame-container {
     position: relative; border-radius: 16px; overflow: hidden;
-    aspect-ratio: 4/3; margin-bottom: 16px; display: none;
+    aspect-ratio: 4/3; margin-bottom: 0;display: none;
     border: 1px solid rgba(91,74,223,0.28); background: #000;
+    touch-action: none;
   }
   #previewImg {
-    width: 100%; height: 100%; object-fit: cover; display: block;
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    object-fit: cover;
+    transform-origin: center center;
+    display: block;
+    will-change: transform;
+    transition: none;
+    user-select: none;
+    -webkit-user-drag: none;
   }
+  /* ── IMAGE CONTROLS BAR ── */
+  .img-controls {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(91,74,223,0.18);
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    margin-bottom: 16px;
+  }
+  .img-controls.visible { display: flex; }
+  .img-ctrl-icon { color: rgba(255,255,255,0.25); flex-shrink: 0; }
+  .img-scale-slider {
+    -webkit-appearance: none; appearance: none;
+    flex: 1; height: 3px; border-radius: 2px; outline: none;
+    background: linear-gradient(90deg, var(--ocean) var(--spct,40%), rgba(255,255,255,0.1) var(--spct,40%));
+  }
+  .img-scale-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--ocean); border: 2px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 6px rgba(91,74,223,0.5);
+    transition: transform 0.15s;
+  }
+  .img-scale-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  .img-scale-slider::-moz-range-thumb {
+    width: 16px; height: 16px; border-radius: 50%;
+    background: var(--ocean); border: 2px solid rgba(255,255,255,0.9); cursor: pointer;
+  }
+  .img-ctrl-label {
+    font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.22);
+    white-space: nowrap; min-width: 32px; text-align: right;
+  }
+  .btn-img-reset {
+    padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(91,74,223,0.3);
+    background: none; color: rgba(255,255,255,0.3); font-family: 'DM Sans', sans-serif;
+    font-size: 10px; letter-spacing: 1px; text-transform: uppercase;
+    transition: background 0.2s, color 0.2s; white-space: nowrap;
+  }
+  .btn-img-reset:hover { background: rgba(91,74,223,0.25); color: rgba(255,255,255,0.7); }
   .face-frame-overlay {
     position: absolute; inset: 0; pointer-events: none;
   }
-  /* SVG face oval guide rendered as overlay */
   .face-oval-svg {
     position: absolute;
     top: 50%; left: 50%;
@@ -781,6 +831,82 @@
     display: none; align-items: center; gap: 10px;
   }
   .frame-instructions svg { flex-shrink: 0; opacity: 0.6; }
+
+  /* ── HEIGHT INPUT ── */
+  .height-input-block {
+    margin-bottom: 16px;
+    display: none;
+  }
+  .height-input-block.visible { display: block; }
+
+  .height-input-label {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 10px; letter-spacing: 2.5px; text-transform: uppercase;
+    color: rgba(255,255,255,0.3); margin-bottom: 10px;
+  }
+  .height-input-label svg { opacity: 0.5; }
+
+  .height-unit-toggle {
+    display: flex; gap: 4px;
+    background: rgba(255,255,255,0.04); border-radius: 8px; padding: 3px;
+    margin-bottom: 12px;
+  }
+  .height-unit-btn {
+    flex: 1; padding: 7px; background: none; border: none;
+    color: rgba(255,255,255,0.3); font-family: 'DM Sans', sans-serif;
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+    border-radius: 6px; transition: all 0.2s;
+  }
+  .height-unit-btn.active { background: rgba(91,74,223,0.45); color: #fff; }
+  .height-unit-btn:hover:not(.active) { color: rgba(255,255,255,0.6); }
+
+  .height-fields { display: flex; gap: 10px; }
+
+  .height-field {
+    flex: 1; position: relative;
+  }
+  .height-field input {
+    width: 100%; padding: 12px 40px 12px 14px;
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(91,74,223,0.28);
+    border-radius: 10px; color: var(--cream);
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 300;
+    outline: none; transition: border-color 0.2s, background 0.2s;
+    -moz-appearance: textfield;
+  }
+  .height-field input::-webkit-outer-spin-button,
+  .height-field input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .height-field input:focus { border-color: rgba(91,74,223,0.7); background: rgba(91,74,223,0.08); }
+  .height-field input::placeholder { color: rgba(255,255,255,0.18); }
+  .height-field-unit {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    font-size: 11px; letter-spacing: 1px; color: rgba(255,255,255,0.25); pointer-events: none;
+  }
+
+  .height-slider-wrap { margin-top: 14px; }
+  .height-slider {
+    -webkit-appearance: none; appearance: none;
+    width: 100%; height: 3px; border-radius: 2px; outline: none;
+    background: linear-gradient(90deg, var(--ocean) var(--pct, 50%), rgba(255,255,255,0.1) var(--pct, 50%));
+    transition: background 0.1s;
+  }
+  .height-slider::-webkit-slider-thumb {
+    -webkit-appearance: none; appearance: none;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--ocean); border: 2px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 8px rgba(91,74,223,0.5);
+    transition: transform 0.15s;
+  }
+  .height-slider::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  .height-slider::-moz-range-thumb {
+    width: 18px; height: 18px; border-radius: 50%;
+    background: var(--ocean); border: 2px solid rgba(255,255,255,0.9);
+    box-shadow: 0 2px 8px rgba(91,74,223,0.5); cursor: pointer;
+  }
+  .height-slider-labels {
+    display: flex; justify-content: space-between;
+    font-size: 10px; letter-spacing: 1px; color: rgba(255,255,255,0.2);
+    margin-top: 6px;
+  }
 
   .btn-analyze {
     width: 100%; padding: 16px; border-radius: 12px;
@@ -918,7 +1044,6 @@
     </div>
     <div class="modal-body">
 
-      <!-- Tabs — SVG icons, no emoji -->
       <div class="modal-tabs">
         <button class="modal-tab active" id="tabCamera" onclick="switchTab('camera')">
           <svg class="tab-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -988,10 +1113,8 @@
         <div class="face-frame-container" id="faceFrameContainer">
           <img id="previewImg" src="" alt="Preview">
           <div class="face-frame-overlay">
-            <!-- Oval face guide -->
             <svg class="face-oval-svg" viewBox="0 0 100 133" fill="none" xmlns="http://www.w3.org/2000/svg">
               <ellipse cx="50" cy="66" rx="49" ry="65" stroke="rgba(124,110,245,0.65)" stroke-width="2" stroke-dasharray="6 4"/>
-              <!-- landmark dots -->
               <circle cx="33" cy="52" r="2.5" fill="rgba(124,110,245,0.5)"/>
               <circle cx="67" cy="52" r="2.5" fill="rgba(124,110,245,0.5)"/>
               <circle cx="50" cy="75" r="2.5" fill="rgba(124,110,245,0.5)"/>
@@ -1005,22 +1128,85 @@
               <div class="fc br"></div>
             </div>
             <div class="face-frame-scan"></div>
-            <div class="face-frame-hint">Align face within the oval</div>
+            <div class="face-frame-hint">Drag to move · Scroll or slider to resize</div>
           </div>
           <button class="upload-preview-remove" onclick="removeUpload()">✕</button>
+        </div>
+
+        <!-- ── IMAGE CONTROLS BAR ── -->
+        <div class="img-controls" id="imgControls">
+          <svg class="img-ctrl-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            <line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/>
+          </svg>
+          <input type="range" class="img-scale-slider" id="imgScaleSlider"
+            min="0.3" max="3" step="0.01" value="1"
+            oninput="onScaleSlider(this.value)">
+          <span class="img-ctrl-label" id="imgScaleLabel">100%</span>
+          <button class="btn-img-reset" onclick="resetImgTransform()">Reset</button>
         </div>
 
         <div class="frame-instructions" id="frameInstructions">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(124,110,245,0.8)" stroke-width="2">
             <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
-          For best results, ensure your face is centered and filling the oval guide. Good lighting improves accuracy.
+          Drag the image to reposition · Use the slider or scroll wheel to resize · Align your face inside the oval for best accuracy.
         </div>
+
+        <!-- ── HEIGHT INPUT BLOCK ── -->
+        <div class="height-input-block" id="heightInputBlock">
+
+          <div class="height-input-label">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="2" x2="12" y2="22"/>
+              <path d="M8 6h4M8 10h4M8 14h4M8 18h4"/>
+              <path d="M16 6l2 0M16 22l2 0M17 6v16"/>
+            </svg>
+            Your Height
+          </div>
+
+          <div class="height-unit-toggle">
+            <button class="height-unit-btn active" id="unitFt" onclick="setUnit('ft')">ft / in</button>
+            <button class="height-unit-btn" id="unitCm" onclick="setUnit('cm')">cm</button>
+          </div>
+
+          <div class="height-fields" id="heightFieldsFt">
+            <div class="height-field">
+              <input type="number" id="heightFt" min="4" max="7" placeholder="5" oninput="syncSliderFromFields()">
+              <span class="height-field-unit">ft</span>
+            </div>
+            <div class="height-field">
+              <input type="number" id="heightIn" min="0" max="11" placeholder="10" oninput="syncSliderFromFields()">
+              <span class="height-field-unit">in</span>
+            </div>
+          </div>
+
+          <div class="height-fields" id="heightFieldsCm" style="display:none;">
+            <div class="height-field">
+              <input type="number" id="heightCm" min="120" max="220" placeholder="178" oninput="syncSliderFromFields()">
+              <span class="height-field-unit">cm</span>
+            </div>
+          </div>
+
+          <div class="height-slider-wrap">
+            <input type="range" class="height-slider" id="heightSlider"
+              min="120" max="220" value="178"
+              oninput="syncFieldsFromSlider(this.value)">
+            <div class="height-slider-labels">
+              <span>4′0″</span>
+              <span>5′0″</span>
+              <span>5′10″</span>
+              <span>6′7″</span>
+            </div>
+          </div>
+
+        </div>
+        <!-- ── END HEIGHT INPUT BLOCK ── -->
 
         <button class="btn-analyze" id="btnAnalyzeUpload" disabled onclick="analyzeUploadedImage()">Analyze My Face →</button>
       </div>
 
-      <!-- Progress Overlay (shared) -->
+      <!-- Progress (shared) -->
       <div class="progress-bar-wrap" id="progressBarWrap">
         <div class="progress-bar-fill" id="progressBarFill"></div>
       </div>
@@ -1622,12 +1808,18 @@ function loadFile(file) {
     const img = document.getElementById('previewImg');
     const container = document.getElementById('faceFrameContainer');
     const instructions = document.getElementById('frameInstructions');
+    const heightBlock = document.getElementById('heightInputBlock');
     img.src = uploadedImageData;
+    img.onload = () => { fitImageToContainer(); };
     container.style.display = 'block';
     container.classList.add('has-image');
     instructions.style.display = 'flex';
+    heightBlock.classList.add('visible');
+    document.getElementById('imgControls').classList.add('visible');
     document.getElementById('uploadZone').style.display = 'none';
     document.getElementById('btnAnalyzeUpload').disabled = false;
+    syncSliderFromFields();
+    initImgDrag();
   };
   reader.readAsDataURL(file);
 }
@@ -1637,13 +1829,145 @@ function removeUpload() {
   const img = document.getElementById('previewImg');
   const container = document.getElementById('faceFrameContainer');
   const instructions = document.getElementById('frameInstructions');
+  const heightBlock = document.getElementById('heightInputBlock');
   img.src = '';
   container.style.display = 'none';
   container.classList.remove('has-image');
   instructions.style.display = 'none';
+  heightBlock.classList.remove('visible');
+  document.getElementById('imgControls').classList.remove('visible');
   document.getElementById('uploadZone').style.display = 'block';
   document.getElementById('btnAnalyzeUpload').disabled = true;
   document.getElementById('file-input').value = '';
+  destroyImgDrag();
+}
+
+/* ═══════════════════════════════════════
+   IMAGE DRAG + RESIZE ENGINE
+═══════════════════════════════════════ */
+let imgTranslateX = 0, imgTranslateY = 0, imgScale = 1;
+let dragActive = false, dragStartX = 0, dragStartY = 0, dragOriginX = 0, dragOriginY = 0;
+let pinchActive = false, pinchStartDist = 0, pinchStartScale = 1;
+
+function applyImgTransform() {
+  const img = document.getElementById('previewImg');
+  img.style.transform = `translate(${imgTranslateX}px, ${imgTranslateY}px) scale(${imgScale})`;
+  // Sync slider
+  const slider = document.getElementById('imgScaleSlider');
+  const clamped = Math.max(0.3, Math.min(3, imgScale));
+  slider.value = clamped;
+  const pct = ((clamped - 0.3) / (3 - 0.3)) * 100;
+  slider.style.setProperty('--spct', pct + '%');
+  document.getElementById('imgScaleLabel').textContent = Math.round(imgScale * 100) + '%';
+}
+
+function fitImageToContainer() {
+  imgTranslateX = 0; imgTranslateY = 0; imgScale = 1;
+  applyImgTransform();
+}
+
+function resetImgTransform() {
+  fitImageToContainer();
+}
+
+function onScaleSlider(val) {
+  imgScale = parseFloat(val);
+  applyImgTransform();
+}
+
+// ── Mouse drag ──
+function onMouseDown(e) {
+  if (e.button !== 0) return;
+  dragActive = true;
+  dragStartX = e.clientX;
+  dragStartY = e.clientY;
+  dragOriginX = imgTranslateX;
+  dragOriginY = imgTranslateY;
+  e.preventDefault();
+}
+
+function onMouseMove(e) {
+  if (!dragActive) return;
+  imgTranslateX = dragOriginX + (e.clientX - dragStartX);
+  imgTranslateY = dragOriginY + (e.clientY - dragStartY);
+  applyImgTransform();
+}
+
+function onMouseUp() { dragActive = false; }
+
+// ── Scroll to zoom ──
+function onWheel(e) {
+  e.preventDefault();
+  const delta = e.deltaY > 0 ? -0.07 : 0.07;
+  imgScale = Math.max(0.3, Math.min(3, imgScale + delta));
+  applyImgTransform();
+}
+
+// ── Touch drag + pinch ──
+function getTouchDist(touches) {
+  const dx = touches[0].clientX - touches[1].clientX;
+  const dy = touches[0].clientY - touches[1].clientY;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function onTouchStart(e) {
+  if (e.touches.length === 1) {
+    dragActive = true;
+    dragStartX = e.touches[0].clientX;
+    dragStartY = e.touches[0].clientY;
+    dragOriginX = imgTranslateX;
+    dragOriginY = imgTranslateY;
+  } else if (e.touches.length === 2) {
+    dragActive = false;
+    pinchActive = true;
+    pinchStartDist = getTouchDist(e.touches);
+    pinchStartScale = imgScale;
+  }
+  e.preventDefault();
+}
+
+function onTouchMove(e) {
+  if (dragActive && e.touches.length === 1) {
+    imgTranslateX = dragOriginX + (e.touches[0].clientX - dragStartX);
+    imgTranslateY = dragOriginY + (e.touches[0].clientY - dragStartY);
+    applyImgTransform();
+  } else if (pinchActive && e.touches.length === 2) {
+    const dist = getTouchDist(e.touches);
+    imgScale = Math.max(0.3, Math.min(3, pinchStartScale * (dist / pinchStartDist)));
+    applyImgTransform();
+  }
+  e.preventDefault();
+}
+
+function onTouchEnd(e) {
+  if (e.touches.length === 0) { dragActive = false; pinchActive = false; }
+  if (e.touches.length === 1) { pinchActive = false; }
+}
+
+function initImgDrag() {
+  const container = document.getElementById('faceFrameContainer');
+  container.addEventListener('mousedown',  onMouseDown);
+  window.addEventListener('mousemove',     onMouseMove);
+  window.addEventListener('mouseup',       onMouseUp);
+  container.addEventListener('wheel',      onWheel, { passive: false });
+  container.addEventListener('touchstart', onTouchStart, { passive: false });
+  container.addEventListener('touchmove',  onTouchMove,  { passive: false });
+  container.addEventListener('touchend',   onTouchEnd);
+  container.style.cursor = 'grab';
+  container.addEventListener('mousedown', () => container.style.cursor = 'grabbing');
+  window.addEventListener('mouseup', () => container.style.cursor = 'grab');
+}
+
+function destroyImgDrag() {
+  const container = document.getElementById('faceFrameContainer');
+  container.removeEventListener('mousedown',  onMouseDown);
+  window.removeEventListener('mousemove',     onMouseMove);
+  window.removeEventListener('mouseup',       onMouseUp);
+  container.removeEventListener('wheel',      onWheel);
+  container.removeEventListener('touchstart', onTouchStart);
+  container.removeEventListener('touchmove',  onTouchMove);
+  container.removeEventListener('touchend',   onTouchEnd);
+  imgTranslateX = 0; imgTranslateY = 0; imgScale = 1;
 }
 
 function analyzeUploadedImage() {
@@ -1652,10 +1976,66 @@ function analyzeUploadedImage() {
 }
 
 /* ═══════════════════════════════════════
-   ANALYSIS ENGINE — Claude Vision API
+   HEIGHT INPUT LOGIC
 ═══════════════════════════════════════ */
-async function runAnalysis(imageDataUrl) {
-  // Show progress UI
+let currentUnit = 'ft';
+
+function setUnit(unit) {
+  currentUnit = unit;
+  document.getElementById('unitFt').classList.toggle('active', unit === 'ft');
+  document.getElementById('unitCm').classList.toggle('active', unit === 'cm');
+  document.getElementById('heightFieldsFt').style.display = unit === 'ft' ? 'flex' : 'none';
+  document.getElementById('heightFieldsCm').style.display = unit === 'cm' ? 'flex' : 'none';
+  syncSliderFromFields();
+}
+
+// Convert slider value (cm) → update fields
+function syncFieldsFromSlider(cmVal) {
+  cmVal = parseInt(cmVal);
+  const slider = document.getElementById('heightSlider');
+  const pct = ((cmVal - 120) / (220 - 120)) * 100;
+  slider.style.setProperty('--pct', pct + '%');
+
+  if (currentUnit === 'cm') {
+    document.getElementById('heightCm').value = cmVal;
+  } else {
+    const totalIn = Math.round(cmVal / 2.54);
+    document.getElementById('heightFt').value = Math.floor(totalIn / 12);
+    document.getElementById('heightIn').value = totalIn % 12;
+  }
+}
+
+// Convert fields → update slider
+function syncSliderFromFields() {
+  let cm;
+  if (currentUnit === 'cm') {
+    cm = parseInt(document.getElementById('heightCm').value) || 178;
+  } else {
+    const ft = parseInt(document.getElementById('heightFt').value) || 5;
+    const inch = parseInt(document.getElementById('heightIn').value) || 10;
+    cm = Math.round((ft * 12 + inch) * 2.54);
+  }
+  cm = Math.max(120, Math.min(220, cm));
+  const slider = document.getElementById('heightSlider');
+  slider.value = cm;
+  const pct = ((cm - 120) / (220 - 120)) * 100;
+  slider.style.setProperty('--pct', pct + '%');
+}
+
+function getHeightCm() {
+  if (currentUnit === 'cm') {
+    return parseInt(document.getElementById('heightCm').value) || 178;
+  } else {
+    const ft = parseInt(document.getElementById('heightFt').value) || 5;
+    const inch = parseInt(document.getElementById('heightIn').value) || 10;
+    return Math.round((ft * 12 + inch) * 2.54);
+  }
+}
+
+/* ═══════════════════════════════════════
+   ANALYSIS ENGINE
+═══════════════════════════════════════ */
+async function runAnalysis() {
   document.getElementById('analysisProgress').style.display = 'block';
   document.getElementById('progressBarWrap').style.display = 'block';
   document.getElementById('analysisResults').style.display = 'none';
@@ -1663,10 +2043,8 @@ async function runAnalysis(imageDataUrl) {
   document.getElementById('panelUpload').style.display = 'none';
 
   const steps = [
-    document.getElementById('step1'),
-    document.getElementById('step2'),
-    document.getElementById('step3'),
-    document.getElementById('step4'),
+    document.getElementById('step1'), document.getElementById('step2'),
+    document.getElementById('step3'), document.getElementById('step4'),
     document.getElementById('step5'),
   ];
   const progressFill = document.getElementById('progressBarFill');
@@ -1681,131 +2059,38 @@ async function runAnalysis(imageDataUrl) {
   }
 
   setStep(0);
-  const stepTimings = [0, 700, 1500, 2400, 3400];
+  const stepTimings = [0, 500, 1000, 1500, 2000];
   stepTimings.forEach((delay, i) => setTimeout(() => setStep(i), delay));
 
-  // Extract base64 and media type
-  const base64Data = imageDataUrl.split(',')[1];
-  const mediaType  = imageDataUrl.split(';')[0].split(':')[1] || 'image/jpeg';
-
-  const systemPrompt = `You are Pisces, a precision facial biometric analysis AI. Your task is to analyze a user's face and estimate body weight and health metrics.
-
-Analyze the provided facial photo with extreme detail across ALL of the following dimensions:
-1. Facial Adiposity — submental fat (chin/neck area), cheek fullness, periorbital fat pads, nasolabial fold depth
-2. Bone Structure — jaw width, zygomatic arch prominence, orbital bone definition, temporal width, forehead breadth
-3. Facial Volume Distribution — where fat appears to deposit vs. where skeletal structure is visible
-4. Skin Texture and Tension — skin laxity indicators, facial contour sharpness vs. softness
-5. Facial Width-to-Height Ratio (fWHR) — correlates with body composition
-6. Neck/Jawline Definition — a strong indicator of body fat percentage
-7. Overall Facial Geometry — oval, round, square, heart, oblong shapes each correlate with different body types
-
-Based on ALL of these biometric observations, provide your analysis in this exact JSON format with no markdown, no code fences, just raw JSON:
-
-{
-  "weight_lbs": <integer estimate, e.g. 158>,
-  "weight_kg": <number one decimal, e.g. 71.7>,
-  "bmi": <number one decimal, e.g. 23.4>,
-  "bmi_category": "<Underweight | Normal weight | Overweight | Obese>",
-  "body_fat_pct": "<range string, e.g. 18-22%>",
-  "confidence": <integer 70-96>,
-  "build": "<Slender | Lean | Athletic | Average | Stocky | Heavy>",
-  "facial_observations": [
-    "<specific observation 1 in plain language>",
-    "<specific observation 2>",
-    "<specific observation 3>",
-    "<specific observation 4>"
-  ],
-  "health_insights": [
-    "<actionable health insight 1>",
-    "<health insight 2>"
-  ],
-  "scan_quality": "<Good | Fair | Poor>"
-}
-
-Be genuinely analytical — actually study the image carefully. Give a real estimate based on what you observe. Always provide concrete numbers.`;
-
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
+    const response = await fetch('http://127.0.0.1:8000/predict', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: 'claude-sonnet-4-5',
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{
-          role: 'user',
-          content: [
-            {
-              type: 'image',
-              source: { type: 'base64', media_type: mediaType, data: base64Data }
-            },
-            {
-              type: 'text',
-              text: 'Analyze this facial photo and return the JSON biometric assessment. Study the face carefully before responding.'
-            }
-          ]
-        }]
+        landmarks: window.currentLandmarks || [],
+        height: getHeightCm()
       })
     });
 
     if (!response.ok) {
-      const errText = await response.text();
-      console.error('API error status:', response.status, errText);
-      throw new Error(`API returned ${response.status}`);
+      throw new Error(`Local Engine Error: ${response.status}`);
     }
 
-    const data = await response.json();
+    const analysis = await response.json();
 
-    if (!data.content || data.content.length === 0) {
-      throw new Error('Empty response from API');
-    }
-
-    const rawText = data.content.map(b => b.text || '').join('');
-
-    // Parse JSON — strip any possible fences
-    let analysis;
-    try {
-      const clean = rawText.replace(/```json|```/g, '').trim();
-      const jsonMatch = clean.match(/\{[\s\S]*\}/);
-      analysis = JSON.parse(jsonMatch ? jsonMatch[0] : clean);
-    } catch (parseErr) {
-      console.error('JSON parse error. Raw response was:', rawText);
-      throw new Error('Could not parse analysis response');
-    }
-
-    // Complete progress
     steps.forEach(s => s.classList.remove('active'));
     steps[steps.length - 1].classList.add('done');
     progressFill.style.width = '100%';
 
-    await new Promise(r => setTimeout(r, 600));
+    await new Promise(r => setTimeout(r, 400));
     showResults(analysis);
 
   } catch (err) {
     console.error('Analysis error:', err);
     document.getElementById('analysisProgress').style.display = 'none';
     document.getElementById('progressBarWrap').style.display = 'none';
-
-    // Restore panels
     const activeTab = document.querySelector('.modal-tab.active')?.id === 'tabCamera' ? 'camera' : 'upload';
-    document.getElementById('panelCamera').style.display = activeTab === 'camera' ? 'block' : 'none';
-    document.getElementById('panelUpload').style.display = activeTab === 'upload' ? 'block' : 'none';
-
-    // Show inline error instead of alert
-    const errBanner = document.createElement('div');
-    errBanner.style.cssText = `
-      background: rgba(255,60,60,0.1); border: 1px solid rgba(255,60,60,0.3);
-      border-radius: 10px; padding: 14px 16px; margin-bottom: 16px;
-      font-size: 12px; color: rgba(255,120,120,0.85); letter-spacing: 0.5px; line-height: 1.6;
-    `;
-    errBanner.textContent = 'Analysis could not complete. Please ensure your photo is clear and well-lit with your face visible, then try again.';
-    const panel = document.getElementById(activeTab === 'camera' ? 'panelCamera' : 'panelUpload');
-    panel.prepend(errBanner);
-    setTimeout(() => errBanner.remove(), 5000);
+    document.getElementById('panel' + activeTab.charAt(0).toUpperCase() + activeTab.slice(1)).style.display = 'block';
   }
 }
 
@@ -1899,7 +2184,8 @@ function resetModal() {
 
   if (activeTab === 'upload') removeUpload();
 }
-</script> <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
+</script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 <script src="script.js"></script>
 </body>
