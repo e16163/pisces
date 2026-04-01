@@ -38,6 +38,17 @@ function captureFaceFrame() {
   return canvas;
 }
 
+// ── Grab base64 from whichever canvas was last used ──────────────────
+function getCanvasBase64() {
+  const canvas = document.getElementById("capture-canvas");
+  try {
+    return canvas.toDataURL("image/jpeg", 0.85).split(",")[1];
+  } catch (e) {
+    console.warn("Could not capture base64 image:", e);
+    return "";
+  }
+}
+
 // ── Override analyzeUploadedImage (defined in the HTML) ───────────────
 // Run MediaPipe first; the onResults callback fires runAnalysis() after.
 window.analyzeUploadedImage = function () {
@@ -70,6 +81,8 @@ faceMesh.onResults((results) => {
   if (results.multiFaceLandmarks?.[0]) {
     console.log("✅ Face landmarks detected.");
     window.currentLandmarks = results.multiFaceLandmarks[0];
+    window.currentImageBase64 = getCanvasBase64(); // ← capture image for ViT
+    console.log("Base64 length:", window.currentImageBase64?.length);
     runAnalysis(); // defined in the HTML; reads window.currentLandmarks
   } else {
     console.warn("No face detected.");
