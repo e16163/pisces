@@ -1768,18 +1768,7 @@ function stopCamera() {
   document.getElementById('camStatusBadge').textContent = 'Ready to scan';
 }
 
-function capturePhoto() {
-  if (!stream) return;
-  capCanvas.width  = video.videoWidth  || 640;
-  capCanvas.height = video.videoHeight || 480;
-  capCtx.save();
-  capCtx.scale(-1, 1);
-  capCtx.drawImage(video, -capCanvas.width, 0);
-  capCtx.restore();
-  const imageData = capCanvas.toDataURL('image/jpeg', 0.9);
-  stopCamera();
-  runAnalysis(imageData);
-}
+
 
 /* ═══════════════════════════════════════
    FILE UPLOAD
@@ -1970,10 +1959,7 @@ function destroyImgDrag() {
   imgTranslateX = 0; imgTranslateY = 0; imgScale = 1;
 }
 
-function analyzeUploadedImage() {
-  if (!uploadedImageData) return;
-  runAnalysis(uploadedImageData);
-}
+
 
 /* ═══════════════════════════════════════
    HEIGHT INPUT LOGIC
@@ -2063,12 +2049,16 @@ async function runAnalysis() {
   stepTimings.forEach((delay, i) => setTimeout(() => setStep(i), delay));
 
   try {
+    console.log("Sending to API...");
     const response = await fetch('http://127.0.0.1:8000/predict', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         landmarks: window.currentLandmarks || [],
-        height: getHeightCm()
+        height: getHeightCm(),
+        image_base64: window.currentImageBase64 || "",
+        age: 30,
+        sex: "unknown"
       })
     });
 
@@ -2083,6 +2073,7 @@ async function runAnalysis() {
     progressFill.style.width = '100%';
 
     await new Promise(r => setTimeout(r, 400));
+    console.log("API response:", JSON.stringify(analysis)); // add this
     showResults(analysis);
 
   } catch (err) {
