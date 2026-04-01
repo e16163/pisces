@@ -24,7 +24,7 @@ app.add_middleware(
 #  Point WEIGHTS_PATH at your aug_epoch_7.pt file
 # ═══════════════════════════════════════════════════════════════════
 
-WEIGHTS_PATH = os.path.join(os.path.dirname(__file__), "../face-to-bmi-vit/weights/aug_epoch_7.pt")
+WEIGHTS_PATH = os.environ.get("WEIGHTS_PATH", "")
 DEVICE       = "mps" if torch.backends.mps.is_available() else "cpu"
 
 # Add the face-to-bmi-vit scripts folder so we can import their model definition
