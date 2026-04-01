@@ -1,2 +1,3 @@
 # pisces
-face to fat
+ai model turning face to fatness
+trained on 7 epochs
